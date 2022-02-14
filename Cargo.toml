@@ -1,0 +1,60 @@
+[package]
+name = "mesh-loader"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/openrr/mesh-loader"
+keywords = ["asset", "mesh", "stl", "collada"]
+categories = ["parser-implementations", "graphics"]
+exclude = ["/.*", "/tools", "/assets"]
+description = """
+Fast parser for 3D-model-formats.
+"""
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[workspace]
+# members = ["bench"]
+exclude = ["example"]
+
+[features]
+default = ["stl", "collada"]
+
+# STL (.stl)
+# https://en.wikipedia.org/wiki/STL_(file_format)
+stl = []
+# COLLADA (.dae)
+# https://en.wikipedia.org/wiki/COLLADA
+collada = []
+# TODO
+# # Wavefront OBJ (.obj)
+# # https://en.wikipedia.org/wiki/Wavefront_.obj_file
+# obj = []
+
+# NOTE: anyhow, indexmap, slotmap, tracing are public dependencies
+[dependencies]
+# Used in all formats.
+fast-float = "0.2"
+memchr = "2.4"
+
+# Used in COLLADA parsing.
+indexmap = { version = "1.5.2", features = ["std"] }
+roxmltree = "0.14"
+slotmap = "1.0.5"
+
+# TODO: remove
+anyhow = "1"
+
+[dev-dependencies]
+similar-asserts = "1"
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["ansi"] }
+walkdir = "2"
+
+assimp = "0.3"
+piston_collada = { package = "collada", version = "0.14" }
+
+[profile.bench]
+# codegen-units = 1
+# lto = true
