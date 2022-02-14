@@ -124,7 +124,10 @@ where
     I: Key,
 {
     fn default() -> Self {
-        Self { map: HashMap::default(), arena: SlotMap::default() }
+        Self {
+            map: HashMap::default(),
+            arena: SlotMap::default(),
+        }
     }
 }
 

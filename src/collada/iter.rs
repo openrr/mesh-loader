@@ -31,11 +31,9 @@ impl<'a> Iterator for Meshes<'a> {
     type Item = Mesh<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(index, xml)| Mesh {
-            doc: self.doc,
-            index,
-            xml,
-        })
+        self.iter
+            .next()
+            .map(|(_index, xml)| Mesh { doc: self.doc, xml })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -50,7 +48,6 @@ impl FusedIterator for Meshes<'_> {}
 #[derive(Debug, Clone)]
 pub struct Mesh<'a> {
     pub(crate) doc: &'a ast::Document,
-    pub(crate) index: usize,
     pub(crate) xml: &'a ast::Geometry,
 }
 
@@ -73,9 +70,8 @@ impl<'a> Iterator for Primitives<'a> {
     type Item = Primitive<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.iter.next().map(|(index, xml)| Primitive {
+        self.iter.next().map(|(_index, xml)| Primitive {
             mesh: self.mesh.clone(),
-            index,
             xml,
         })
     }
@@ -92,7 +88,6 @@ impl FusedIterator for Primitives<'_> {}
 #[derive(Debug, Clone)]
 pub struct Primitive<'a> {
     pub(crate) mesh: Mesh<'a>,
-    pub(crate) index: usize,
     pub xml: &'a ast::Primitive,
 }
 
@@ -589,13 +584,4 @@ pub enum Face {
     Point([u32; 1]),
     Line([u32; 2]),
     Triangle([u32; 3]),
-}
-
-#[allow(clippy::exhaustive_enums)]
-#[derive(Debug, Clone)]
-pub enum FaceNonTriangulated {
-    Point([u32; 1]),
-    Line([u32; 2]),
-    Triangle([u32; 3]),
-    Poly(Vec<u32>),
 }

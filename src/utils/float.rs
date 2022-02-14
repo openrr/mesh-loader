@@ -7,7 +7,10 @@ pub(crate) fn parse_array<T>(text: &str) -> ParseFloatArray<'_, T>
 where
     T: fast_float::FastFloat,
 {
-    ParseFloatArray { text: text.trim_start(), _marker: PhantomData }
+    ParseFloatArray {
+        text: text.trim_start(),
+        _marker: PhantomData,
+    }
 }
 
 pub(crate) struct ParseFloatArray<'a, T> {
@@ -40,7 +43,12 @@ pub(crate) fn parse_array_exact<T>(text: &str, num: usize) -> ParseFloatArrayExa
 where
     T: fast_float::FastFloat,
 {
-    ParseFloatArrayExact { text: text.trim_start(), num, count: 0, _marker: PhantomData }
+    ParseFloatArrayExact {
+        text: text.trim_start(),
+        num,
+        count: 0,
+        _marker: PhantomData,
+    }
 }
 
 pub(crate) struct ParseFloatArrayExact<'a, T> {

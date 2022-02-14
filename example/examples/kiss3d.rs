@@ -81,8 +81,8 @@ fn add_collada(
     scale: na::Vector3<f32>,
 ) -> Result<SceneNode> {
     let path = path.as_ref();
-    let collada = mesh_loader::collada::from_str(&fs::read_to_string(path)?)?;
     let mut base = window.add_group();
+    let collada = mesh_loader::collada::from_str(&fs::read_to_string(path)?)?;
     for mesh in mesh_loader::collada::instance::build_meshes(&collada) {
         debug!(
             "name={},vertices={},normals={},texcoords0={},texcoords1={},faces={}",

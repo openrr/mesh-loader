@@ -17,7 +17,3 @@ impl<T> Hack for fn() -> T {
     type Output = T;
 }
 pub(crate) type Never = <fn() -> ! as Hack>::Output;
-
-#[doc(hidden)]
-#[allow(clippy::upper_case_acronyms)]
-pub type TODO = ();

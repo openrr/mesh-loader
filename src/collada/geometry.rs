@@ -154,7 +154,9 @@ pub(crate) fn parse_library_geometries(cx: &mut Context, node: xml::Node<'_, '_>
         match node.tag_name().name() {
             "geometry" => {
                 if let Some(geometry) = parse_geometry(cx, node)? {
-                    cx.library_geometries.geometries.insert(geometry.id.clone(), geometry);
+                    cx.library_geometries
+                        .geometries
+                        .insert(geometry.id.clone(), geometry);
                 }
             }
             "asset" | "extra" => { /* skip */ }
@@ -194,7 +196,11 @@ fn parse_geometry(cx: &mut Context, node: xml::Node<'_, '_>) -> Result<Option<Ge
         None => error::one_or_more_elems(node, "mesh")?,
     };
 
-    Ok(Some(Geometry { id: id.into(), name: node.attribute("name").map(Into::into), mesh }))
+    Ok(Some(Geometry {
+        id: id.into(),
+        name: node.attribute("name").map(Into::into),
+        mesh,
+    }))
 }
 
 fn parse_mesh(cx: &mut Context, node: xml::Node<'_, '_>) -> Result<Mesh> {
@@ -236,7 +242,10 @@ fn parse_mesh(cx: &mut Context, node: xml::Node<'_, '_>) -> Result<Mesh> {
         None => error::exactly_one_elem(node, "vertices")?,
     };
 
-    Ok(Mesh { vertices, primitives })
+    Ok(Mesh {
+        vertices,
+        primitives,
+    })
 }
 
 fn parse_vertices(node: xml::Node<'_, '_>) -> Result<Vertices> {
@@ -255,7 +264,7 @@ fn parse_vertices(node: xml::Node<'_, '_>) -> Result<Vertices> {
                     InputSemantic::POSITION => input_position = Some(i),
                     InputSemantic::NORMAL => input_normal = Some(i),
                     InputSemantic::TEXCOORD => input_texcoord = Some(i),
-                    semantic => {
+                    _semantic => {
                         // warn!(
                         //     "unsupported semantic {:?} in <input> ({})",
                         //     semantic,
@@ -335,7 +344,7 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> Result<Primiti
                     }
                     InputSemantic::COLOR => input_color = Some(i),
                     InputSemantic::TEXCOORD => input_texcoord.push(i),
-                    semantic => {
+                    _semantic => {
                         // warn!(
                         //     "unsupported semantic {:?} in <input> ({})",
                         //     semantic,

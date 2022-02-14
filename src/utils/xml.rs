@@ -27,7 +27,8 @@ pub(crate) trait XmlNodeExt<'a, 'input> {
 
 impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
     fn element_children(&self) -> ElementChildren<'a, 'input> {
-        self.children().filter(|n| n.node_type() == NodeType::Element)
+        self.children()
+            .filter(|n| n.node_type() == NodeType::Element)
     }
 
     // fn matches_children<'b>(
@@ -38,7 +39,8 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
     // }
 
     fn child(&self, name: &str) -> Option<Node<'a, 'input>> {
-        self.element_children().find(|n| n.tag_name().name() == name)
+        self.element_children()
+            .find(|n| n.tag_name().name() == name)
     }
 
     fn required_attribute(&self, name: &str) -> Result<&'a str> {

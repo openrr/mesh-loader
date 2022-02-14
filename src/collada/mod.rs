@@ -1,24 +1,19 @@
 //! Defines an abstract syntax tree (AST) for COLLADA.
 
-pub mod effect;
-pub mod geometry;
-pub mod image;
-pub mod instance;
-pub mod iter;
-pub mod material;
-pub mod scene;
+mod geometry;
+mod instance;
+mod iter;
 
 use std::{cmp, collections::HashMap, fmt, marker::PhantomData, ops, str::FromStr};
 
 use anyhow::{bail, format_err, Result};
 use indexmap::IndexMap;
 
-pub(crate) use self::{effect::*, geometry::*, image::*, material::*, scene::*};
+pub(crate) use self::geometry::*;
 use crate::{
-    arena::ArenaMap,
-    float, hex, int,
+    float, int,
     xml::{self, XmlNodeExt},
-    Color4, Never, TODO,
+    Never,
 };
 
 mod sealed {
@@ -52,28 +47,9 @@ macro_rules! impl_get_by_uri {
     };
 }
 
-macro_rules! impl_get_by_index {
-    ($ty:ty, $target:ty, $($field:ident).*) => {
-        impl Get<$ty> for Document {
-            type Target = $target;
-
-            fn get(&self, index: &$ty) -> Option<&Self::Target> {
-                self.$($field).*.get_by_index(*index)
-            }
-        }
-
-        impl sealed::Sealed<$ty> for Document {}
-    };
-}
-
 impl_get_by_uri!(Accessor, library_geometries.accessors);
 impl_get_by_uri!(ArrayData, library_geometries.array_data);
-impl_get_by_uri!(Effect, library_effects.effects);
 impl_get_by_uri!(Geometry, library_geometries.geometries);
-impl_get_by_uri!(Material, library_materials.materials);
-impl_get_by_uri!(Node, library_visual_scenes.nodes);
-
-impl_get_by_index!(NodeIndex, Node, library_visual_scenes.nodes);
 
 #[derive(Debug)]
 pub struct Uri<T>(String, PhantomData<fn() -> T>);
@@ -170,8 +146,7 @@ pub struct Version {
 }
 
 impl Version {
-    pub(crate) const V1_4: Self = Self { minor: 4, patch: 0 };
-    pub(crate) const V1_5: Self = Self { minor: 5, patch: 0 };
+    pub(crate) const MIN: Self = Self { minor: 4, patch: 0 };
 }
 
 impl FromStr for Version {
@@ -199,12 +174,7 @@ impl fmt::Display for Version {
 }
 
 pub(crate) struct Context {
-    pub(crate) version: Version,
-    pub(crate) library_effects: LibraryEffects,
     pub(crate) library_geometries: LibraryGeometries,
-    pub(crate) library_images: LibraryImages,
-    pub(crate) library_materials: LibraryMaterials,
-    pub(crate) library_visual_scenes: LibraryVisualScenes,
 }
 
 #[derive(Debug)]
@@ -213,12 +183,7 @@ pub struct Document {
     // Required
     pub version: Version,
 
-    pub library_effects: LibraryEffects,
     pub library_geometries: LibraryGeometries,
-    pub library_images: LibraryImages,
-    pub library_materials: LibraryMaterials,
-    pub library_visual_scenes: LibraryVisualScenes,
-    pub scene: Scene,
 }
 
 impl Document {
@@ -264,42 +229,21 @@ impl Document {
         }
 
         let version: Version = node.required_attribute("version")?.parse()?;
-        if version < Version::V1_4 {
+        if version < Version::MIN {
             bail!("collada schema version {} is not supported", version);
         };
         // debug!("collada schema version is {}", version);
 
         let mut cx = Context {
-            version,
-            library_effects: LibraryEffects::default(),
             library_geometries: LibraryGeometries::default(),
-            library_images: LibraryImages::default(),
-            library_materials: LibraryMaterials::default(),
-            library_visual_scenes: LibraryVisualScenes::default(),
         };
-        let mut scene = None;
 
         for node in node.element_children() {
             match node.tag_name().name() {
-                "library_effects" => {
-                    parse_library_effects(&mut cx, node)?;
-                }
                 "library_geometries" => {
                     parse_library_geometries(&mut cx, node)?;
                 }
-                "library_images" => {
-                    parse_library_images(&mut cx, node)?;
-                }
-                "library_materials" => {
-                    parse_library_materials(&mut cx, node)?;
-                }
-                "library_visual_scenes" => {
-                    parse_library_visual_scenes(&mut cx, node)?;
-                }
-                "scene" => {
-                    scene = Some(parse_scene(&mut cx, node)?);
-                }
-                name => {
+                _name => {
                     // debug!("ignored <{}> element", name);
                 }
             }
@@ -307,12 +251,7 @@ impl Document {
 
         Ok(Self {
             version,
-            library_effects: cx.library_effects,
             library_geometries: cx.library_geometries,
-            library_images: cx.library_images,
-            library_materials: cx.library_materials,
-            library_visual_scenes: cx.library_visual_scenes,
-            scene: scene.unwrap_or_default(),
         })
     }
 
@@ -341,6 +280,7 @@ pub(crate) struct Source {
     // Required
     pub(crate) id: String,
     // Optional
+    #[allow(dead_code)]
     pub(crate) name: Option<String>,
 
     // 0 or 1
@@ -418,6 +358,7 @@ pub(crate) struct ArrayElement {
     // Required
     pub(crate) id: String,
     // Required
+    #[allow(dead_code)]
     pub(crate) count: u32,
 
     pub(crate) data: ArrayData,
@@ -433,9 +374,16 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> Result<ArrayElement> {
 
     // some exporters write empty data arrays, but we need to conserve them anyways because others might reference them
     if content.is_empty() {
-        let data =
-            if is_string_array { ArrayData::String(vec![]) } else { ArrayData::Float(vec![]) };
-        return Ok(ArrayElement { id: id.into(), count, data });
+        let data = if is_string_array {
+            ArrayData::String(vec![])
+        } else {
+            ArrayData::Float(vec![])
+        };
+        return Ok(ArrayElement {
+            id: id.into(),
+            count,
+            data,
+        });
     }
 
     if is_string_array {
@@ -451,7 +399,11 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> Result<ArrayElement> {
             }
 
             let mut n = 0;
-            while content.as_bytes().get(0).map_or(false, |b| !b.is_ascii_whitespace()) {
+            while content
+                .as_bytes()
+                .get(0)
+                .map_or(false, |b| !b.is_ascii_whitespace())
+            {
                 n += 1;
             }
             values.push(content[..n].into());
@@ -459,7 +411,11 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> Result<ArrayElement> {
             content = content.get(n..).unwrap_or_default().trim_start();
         }
 
-        Ok(ArrayElement { id: id.into(), count, data: ArrayData::String(values) })
+        Ok(ArrayElement {
+            id: id.into(),
+            count,
+            data: ArrayData::String(values),
+        })
     } else {
         // TODO: check large count
         let mut values = Vec::with_capacity(count as _);
@@ -477,7 +433,11 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> Result<ArrayElement> {
             values.push(value);
         }
 
-        Ok(ArrayElement { id: id.into(), count, data: ArrayData::Float(values) })
+        Ok(ArrayElement {
+            id: id.into(),
+            count,
+            data: ArrayData::Float(values),
+        })
     }
 }
 
@@ -579,7 +539,13 @@ impl Accessor {
             }
         }
 
-        Ok(Self { count, offset, source, stride, params })
+        Ok(Self {
+            count,
+            offset,
+            source,
+            stride,
+            params,
+        })
     }
 }
 
@@ -649,7 +615,12 @@ impl<T> SharedInput<T> {
         let source = node.parse_url("source")?;
         let offset = node.parse_required_attribute("offset")?;
         let set = node.parse_attribute("set")?.unwrap_or(0);
-        Ok(Self { offset, semantic, source, set })
+        Ok(Self {
+            offset,
+            semantic,
+            source,
+            set,
+        })
     }
 
     pub(crate) fn cast<U>(self) -> SharedInput<U> {
@@ -801,7 +772,11 @@ mod error {
 
     #[cold]
     pub(crate) fn multiple_elems(node: xml::Node<'_, '_>) -> Result<Never> {
-        bail!("multiple <{}> elements ({})", node.tag_name().name(), node.node_location())
+        bail!(
+            "multiple <{}> elements ({})",
+            node.tag_name().name(),
+            node.node_location()
+        )
     }
 
     #[cold]
@@ -813,23 +788,13 @@ mod error {
             child.node_location()
         )
     }
-
-    #[cold]
-    pub(crate) fn unsupported_child_elem(child: xml::Node<'_, '_>) -> Result<Never> {
-        bail!(
-            "<{}> child element in <{}> element is unsupported ({})",
-            child.tag_name().name(),
-            child.parent_element().unwrap().tag_name().name(),
-            child.node_location()
-        )
-    }
 }
 
 mod warn {
     use super::*;
 
     #[cold]
-    pub(crate) fn unsupported_child_elem(child: xml::Node<'_, '_>) {
+    pub(crate) fn unsupported_child_elem(_child: xml::Node<'_, '_>) {
         // warn!(
         //     "<{}> child element in <{}> element is unsupported ({})",
         //     child.tag_name().name(),

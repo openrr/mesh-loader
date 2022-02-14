@@ -8,7 +8,7 @@
     clippy::default_trait_access,
     clippy::exhaustive_enums,
     clippy::exhaustive_structs,
-    clippy::wildcard_imports
+    // clippy::wildcard_imports
 )]
 
 #[macro_use]

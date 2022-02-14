@@ -74,7 +74,10 @@ pub(crate) fn parse_array<T>(text: &str) -> ParseIntArray<'_, T>
 where
     T: Int,
 {
-    ParseIntArray { text: text.trim_start(), _marker: PhantomData }
+    ParseIntArray {
+        text: text.trim_start(),
+        _marker: PhantomData,
+    }
 }
 
 pub(crate) struct ParseIntArray<'a, T> {
