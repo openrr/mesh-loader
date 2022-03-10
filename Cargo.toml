@@ -1,0 +1,41 @@
+[package]
+name = "mesh-loader"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/openrr/mesh-loader"
+keywords = ["asset", "mesh", "stl"] # TODO: "collada", "obj"
+categories = ["parser-implementations", "graphics"]
+exclude = ["/.*", "/assets"]
+description = """
+Fast parser for 3D-model-formats.
+"""
+
+[workspace]
+resolver = "2"
+members = ["example"]
+
+[features]
+default = ["stl"]
+
+# STL (.stl)
+# https://en.wikipedia.org/wiki/STL_(file_format)
+stl = ["rustc-hash"]
+# TODO
+# # COLLADA (.dae)
+# # https://en.wikipedia.org/wiki/COLLADA
+# collada = []
+# TODO
+# # Wavefront OBJ (.obj)
+# # https://en.wikipedia.org/wiki/Wavefront_.obj_file
+# obj = []
+
+[dependencies]
+# Used in all formats.
+fast-float = "0.2"
+memchr = "2.4"
+
+# Used in STL parsing.
+rustc-hash = { version = "1", optional = true }
+
+[dev-dependencies]
