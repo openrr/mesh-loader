@@ -1,7 +1,9 @@
 use std::{
     cell::RefCell,
+    collections::HashMap,
     ffi::OsStr,
-    fs, io,
+    fs::{self, File},
+    io,
     path::{Path, PathBuf},
     rc::Rc,
     str::FromStr,
@@ -72,6 +74,59 @@ fn main() -> Result<()> {
     Ok(())
 }
 
+// fn add_collada(
+//     window: &mut Window,
+//     path: impl AsRef<Path>,
+//     scale: na::Vector3<f32>,
+// ) -> Result<SceneNode> {
+//     let path = path.as_ref();
+//     let mut base = window.add_group();
+//     let collada = mesh_loader::collada::from_str(&fs::read_to_string(path)?)?;
+//     for mesh in mesh_loader::collada::instance::build_meshes(&collada) {
+//         debug!(
+//             "name={},vertices={},normals={},texcoords0={},texcoords1={},faces={}",
+//             mesh.name,
+//             mesh.vertices.len(),
+//             mesh.normals.len(),
+//             mesh.texcoords[0].len(),
+//             mesh.texcoords[1].len(),
+//             mesh.faces.len()
+//         );
+//         let positions = mesh.vertices.iter().map(|&v| na::Point3::from(v)).collect();
+//         let normals = if mesh.normals.is_empty() {
+//             None
+//         } else {
+//             Some(mesh.normals.iter().map(|&v| na::Vector3::from(v)).collect())
+//         };
+//         let texcoords = if mesh.texcoords[0].is_empty() {
+//             None
+//         } else {
+//             Some(
+//                 mesh.texcoords[0]
+//                     .iter()
+//                     .map(|&v| na::Point2::from(v))
+//                     .collect(),
+//             )
+//         };
+//         let faces = mesh
+//             .faces
+//             .iter()
+//             .map(|v| na::Point3::new(v[0] as u16, v[1] as u16, v[2] as u16))
+//             .collect();
+//         let mut _scene = base.add_mesh(
+//             Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
+//                 positions, faces, normals, texcoords, false,
+//             ))),
+//             scale,
+//         );
+
+//         // if let Some(path) = materials.get(0) {
+//         //     scene.set_texture_from_file(path, path.to_str().unwrap());
+//         // }
+//     }
+//     Ok(base)
+// }
+
 fn add_stl(
     window: &mut Window,
     path: impl AsRef<Path>,
@@ -97,3 +152,72 @@ fn add_stl(
     let mesh = Rc::new(RefCell::new(mesh));
     Ok(window.add_mesh(mesh, scale))
 }
+
+// #[derive(Default)]
+// struct Kiss3dMesh {
+//     coords: Vec<na::Point3<f32>>,
+//     faces: Vec<na::Point3<u16>>,
+//     normals: Vec<na::Vector3<f32>>,
+// }
+
+// // Not public API.
+// #[doc(hidden)]
+// #[allow(missing_debug_implementations)]
+// #[derive(Default)]
+// struct MeshReadContext {
+//     mesh: Kiss3dMesh,
+//     vertices_to_indices: HashMap<[u32; 3], usize>,
+//     vertices_indices: [usize; 3],
+// }
+
+// impl FromStl for Kiss3dMesh {
+//     type Context = MeshReadContext;
+
+//     fn start() -> Self::Context {
+//         MeshReadContext::default()
+//     }
+
+//     fn end(mut cx: Self::Context) -> Self {
+//         cx.mesh.coords.shrink_to_fit();
+//         cx.mesh.faces.shrink_to_fit();
+//         cx.mesh.normals.shrink_to_fit();
+//         cx.mesh
+//     }
+
+//     fn push_triangle(cx: &mut Self::Context, triangle: Triangle) {
+//         for (i, vertex) in triangle.vertices.iter().enumerate() {
+//             let bits = [
+//                 vertex[0].to_bits(),
+//                 vertex[1].to_bits(),
+//                 vertex[2].to_bits(),
+//             ];
+
+//             if let Some(&index) = cx.vertices_to_indices.get(&bits) {
+//                 cx.vertices_indices[i] = index;
+//             } else {
+//                 let index = cx.mesh.coords.len();
+//                 cx.vertices_to_indices.insert(bits, index);
+//                 cx.vertices_indices[i] = index;
+//                 cx.mesh.coords.push((*vertex).into());
+//             }
+//         }
+
+//         cx.mesh.normals.push(triangle.normal.into());
+//         cx.mesh.faces.push(na::Point3::new(
+//             cx.vertices_indices[0] as u16,
+//             cx.vertices_indices[1] as u16,
+//             cx.vertices_indices[2] as u16,
+//         ));
+//     }
+
+//     fn reserve(cx: &mut Self::Context, num_triangles: u32) {
+//         // Use reserve_exact because binary stl has information on the exact number of triangles.
+//         cx.mesh.faces.reserve_exact(num_triangles as _);
+//         cx.mesh.normals.reserve_exact(num_triangles as _);
+//         // The number of vertices can be up to three times the number of triangles,
+//         // but is usually less than the number of triangles because of deduplication.
+//         let cap = (num_triangles as f64 / 1.6) as usize;
+//         cx.mesh.coords.reserve(cap);
+//         cx.vertices_to_indices.reserve(cap);
+//     }
+// }

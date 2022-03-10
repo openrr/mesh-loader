@@ -30,6 +30,7 @@ stl = ["rustc-hash"]
 # # https://en.wikipedia.org/wiki/Wavefront_.obj_file
 # obj = []
 
+# NOTE: anyhow, indexmap, slotmap, tracing are public dependencies
 [dependencies]
 # Used in all formats.
 fast-float = "0.2"
@@ -38,4 +39,23 @@ memchr = "2.4"
 # Used in STL parsing.
 rustc-hash = { version = "1", optional = true }
 
+# Used in COLLADA parsing.
+indexmap = { version = "1.5.2", features = ["std"] }
+roxmltree = "0.14"
+slotmap = "1.0.5"
+
+# TODO: remove
+anyhow = "1"
+
 [dev-dependencies]
+similar-asserts = "1"
+tracing = { version = "0.1", default-features = false, features = ["std"] }
+tracing-subscriber = { version = "0.3", default-features = false, features = ["ansi"] }
+walkdir = "2"
+
+assimp = "0.3"
+piston_collada = { package = "collada", version = "0.14" }
+
+[profile.bench]
+# codegen-units = 1
+# lto = true
