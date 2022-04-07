@@ -6,7 +6,7 @@ use std::{fmt, io, mem, str};
 
 use rustc_hash::FxHashMap;
 
-use crate::{Mesh, Vec3};
+use crate::{error::invalid_data, Mesh, Vec3};
 
 /// Parses a mesh from bytes of binary or ascii STL.
 #[inline]
@@ -415,18 +415,8 @@ impl<'a> AsciiStlParser<'a> {
     #[cold]
     fn error(&self, e: impl fmt::Display) -> io::Error {
         // TODO: get line number based on position
-        let msg = format!("{} (line: {}, column: {})", e, 0, self.column);
-        io::Error::new(io::ErrorKind::InvalidData, msg)
+        format_err!("{} (line: {}, column: {})", e, 0, self.column)
     }
-}
-
-#[cold]
-fn invalid_data(e: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> io::Error {
-    let e = e.into();
-    let kind = e
-        .downcast_ref::<io::Error>()
-        .map_or(io::ErrorKind::InvalidData, io::Error::kind);
-    io::Error::new(kind, e)
 }
 
 trait FromStl: Sized {
@@ -448,17 +438,10 @@ trait FromStl: Sized {
     ///   `num_triangles` is normally exact, but if the size of the IO stream
     ///   is very large, this may result in a smaller number being passed to
     ///   protect against input with an incorrect `Seek` implementation.
-    fn reserve(cx: &mut Self::Context, num_triangles: u32) {
-        let _ = (cx, num_triangles);
-    }
+    fn reserve(cx: &mut Self::Context, num_triangles: u32);
 
     /// Sets the name.
-    fn set_name<S>(cx: &mut Self::Context, name: S)
-    where
-        S: Into<String>,
-    {
-        let _ = (cx, name);
-    }
+    fn set_name(cx: &mut Self::Context, name: &str);
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -523,5 +506,9 @@ impl FromStl for Mesh {
         let cap = (num_triangles as f64 / 1.6) as usize;
         cx.mesh.vertices.reserve(cap);
         cx.vertices_to_indices.reserve(cap);
+    }
+
+    fn set_name(cx: &mut Self::Context, name: &str) {
+        cx.mesh.name = name.to_owned();
     }
 }

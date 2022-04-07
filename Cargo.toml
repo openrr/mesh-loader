@@ -1,10 +1,10 @@
 [package]
 name = "mesh-loader"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2021"
 license = "Apache-2.0"
 repository = "https://github.com/openrr/mesh-loader"
-keywords = ["asset", "mesh", "stl"] # TODO: "collada", "obj"
+keywords = ["asset", "mesh", "stl", "collada"] # TODO: "obj"
 categories = ["parser-implementations", "graphics"]
 exclude = ["/.*", "/assets"]
 description = """
@@ -16,15 +16,14 @@ resolver = "2"
 members = ["example"]
 
 [features]
-default = ["stl"]
+default = ["stl", "collada"]
 
 # STL (.stl)
 # https://en.wikipedia.org/wiki/STL_(file_format)
 stl = ["rustc-hash"]
-# TODO
-# # COLLADA (.dae)
-# # https://en.wikipedia.org/wiki/COLLADA
-# collada = []
+# COLLADA (.dae)
+# https://en.wikipedia.org/wiki/COLLADA
+collada = ["indexmap", "roxmltree"]
 # TODO
 # # Wavefront OBJ (.obj)
 # # https://en.wikipedia.org/wiki/Wavefront_.obj_file
@@ -37,5 +36,9 @@ memchr = "2.4"
 
 # Used in STL parsing.
 rustc-hash = { version = "1", optional = true }
+
+# Used in COLLADA parsing.
+indexmap = { version = "1.5.2", optional = true, features = ["std"] }
+roxmltree = { version = "0.14", optional = true }
 
 [dev-dependencies]

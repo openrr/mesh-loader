@@ -48,7 +48,7 @@ fn main() -> Result<()> {
 
     let mut base = match path.extension().and_then(OsStr::to_str) {
         Some("stl" | "STL") => add_stl(&mut window, path, scale)?,
-        // Some("dae" | "DAE") => add_collada(&mut window, path, scale)?,
+        Some("dae" | "DAE") => add_collada(&mut window, path, scale)?,
         // Some("obj" | "OBJ") => add_obj(&mut window, path, scale)?,
         _ => bail!("unsupported file type {path:?}"),
     };
@@ -96,4 +96,58 @@ fn add_stl(
     );
     let mesh = Rc::new(RefCell::new(mesh));
     Ok(window.add_mesh(mesh, scale))
+}
+
+fn add_collada(
+    window: &mut Window,
+    path: impl AsRef<Path>,
+    scale: na::Vector3<f32>,
+) -> Result<SceneNode> {
+    let path = path.as_ref();
+    let mut base = window.add_group();
+    let collada = mesh_loader::collada::from_str(&fs::read_to_string(path)?)?;
+    for mesh in collada.meshes {
+        debug!(
+            "name={},vertices={},normals={},texcoords0={},texcoords1={},faces={}",
+            mesh.name,
+            mesh.vertices.len(),
+            mesh.normals.len(),
+            mesh.texcoords[0].len(),
+            mesh.texcoords[1].len(),
+            mesh.faces.len()
+        );
+        let positions = mesh.vertices.iter().map(|&v| na::Point3::from(v)).collect();
+        let normals = if mesh.normals.is_empty() {
+            None
+        } else {
+            Some(mesh.normals.iter().map(|&v| na::Vector3::from(v)).collect())
+        };
+        let texcoords = if mesh.texcoords[0].is_empty() {
+            None
+        } else {
+            Some(
+                mesh.texcoords[0]
+                    .iter()
+                    .map(|&v| na::Point2::from(v))
+                    .collect(),
+            )
+        };
+        let faces = mesh
+            .faces
+            .iter()
+            .map(|v| na::Point3::new(v[0] as u16, v[1] as u16, v[2] as u16))
+            .collect();
+        let mut _scene = base.add_mesh(
+            Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
+                positions, faces, normals, texcoords, false,
+            ))),
+            scale,
+        );
+
+        // TODO(material)
+        // if let Some(path) = materials.get(0) {
+        //     scene.set_texture_from_file(path, path.to_str().unwrap());
+        // }
+    }
+    Ok(base)
 }

@@ -1,5 +1,5 @@
 [package]
-name = "examples"
+name = "example"
 version = "0.0.0"
 edition = "2021"
 publish = false
@@ -9,6 +9,6 @@ mesh-loader = { path = ".." }
 
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
-kiss3d = "0.33"
+kiss3d = "0.34"
 tracing = { version = "0.1", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", default-features = false, features = ["ansi", "env-filter"] }
