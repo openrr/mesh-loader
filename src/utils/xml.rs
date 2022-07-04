@@ -121,11 +121,7 @@ impl<'a, 'input> Iterator for MatchesChildren<'a, '_, 'input> {
     type Item = Node<'a, 'input>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        for n in &mut self.iter {
-            if n.is_element() && n.has_tag_name(self.name) {
-                return Some(n);
-            }
-        }
-        None
+        self.iter
+            .find(|&n| n.is_element() && n.has_tag_name(self.name))
     }
 }
