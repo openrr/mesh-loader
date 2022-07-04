@@ -258,7 +258,7 @@ impl<'a> AsciiStlParser<'a> {
 
     fn skip_spaces(&mut self) -> bool {
         let prev = self.column;
-        while self.bytes().get(0).map_or(false, u8::is_ascii_whitespace) {
+        while self.bytes().first().map_or(false, u8::is_ascii_whitespace) {
             self.column += 1;
         }
         self.column != prev
@@ -387,13 +387,13 @@ impl<'a> AsciiStlParser<'a> {
 
     fn read_vec3d(&mut self) -> io::Result<Vec3> {
         let x = self.read_float()?;
-        if !self.bytes().get(0).map_or(false, u8::is_ascii_whitespace) {
+        if !self.bytes().first().map_or(false, u8::is_ascii_whitespace) {
             return Err(self.error("expected whitespace after float"));
         }
         self.skip_spaces();
 
         let y = self.read_float()?;
-        if !self.bytes().get(0).map_or(false, u8::is_ascii_whitespace) {
+        if !self.bytes().first().map_or(false, u8::is_ascii_whitespace) {
             return Err(self.error("expected whitespace after float"));
         }
         self.skip_spaces();

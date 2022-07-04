@@ -400,7 +400,7 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> io::Result<ArrayElement> {
             let mut n = 0;
             while content
                 .as_bytes()
-                .get(0)
+                .first()
                 .map_or(false, |b| !b.is_ascii_whitespace())
             {
                 n += 1;
