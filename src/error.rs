@@ -1,5 +1,7 @@
 use std::io;
-#[cfg(feature = "stl")]
+#[cfg(feature = "obj")]
+use std::{borrow::Cow, str};
+#[cfg(any(feature = "obj", feature = "stl"))]
 use std::{fmt, path::Path};
 
 macro_rules! format_err {
@@ -26,20 +28,29 @@ pub(crate) fn invalid_data(e: impl Into<Box<dyn std::error::Error + Send + Sync>
     io::Error::new(kind, e)
 }
 
-#[cfg(feature = "stl")]
+#[cfg(any(feature = "obj", feature = "stl"))]
 #[cold]
 pub(crate) fn with_location(e: io::Error, location: Location<'_>) -> io::Error {
     io::Error::new(e.kind(), format!("{} ({})", e, location))
 }
 
-#[cfg(feature = "stl")]
+#[cfg(feature = "obj")]
+#[cold]
+pub(crate) fn utf8_or_byte_array(bytes: &[u8]) -> Cow<'_, str> {
+    match str::from_utf8(bytes) {
+        Ok(s) => Cow::Borrowed(s),
+        Err(_) => Cow::Owned(format!("{:?}", bytes)),
+    }
+}
+
+#[cfg(any(feature = "obj", feature = "stl"))]
 pub(crate) struct Location<'a> {
     file: Option<&'a Path>,
     line: usize,
     column: usize,
 }
 
-#[cfg(feature = "stl")]
+#[cfg(any(feature = "obj", feature = "stl"))]
 impl<'a> Location<'a> {
     pub(crate) fn new(file: Option<&'a Path>, line: usize, column: usize) -> Self {
         Self {
@@ -50,7 +61,7 @@ impl<'a> Location<'a> {
     }
 }
 
-#[cfg(feature = "stl")]
+#[cfg(any(feature = "obj", feature = "stl"))]
 impl fmt::Display for Location<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(file) = self.file {

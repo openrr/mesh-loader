@@ -49,7 +49,7 @@ fn main() -> Result<()> {
     let mut base = match path.extension().and_then(OsStr::to_str) {
         Some("stl" | "STL") => add_stl(&mut window, path, scale)?,
         Some("dae" | "DAE") => add_collada(&mut window, path, scale)?,
-        // Some("obj" | "OBJ") => add_obj(&mut window, path, scale)?,
+        Some("obj" | "OBJ") => add_obj(&mut window, path, scale)?,
         _ => bail!("unsupported file type {path:?}"),
     };
     base.set_local_scale(args.scale.0, args.scale.1, args.scale.2);
@@ -141,4 +141,9 @@ fn add_collada(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> Res
         // }
     }
     Ok(base)
+}
+
+#[allow(unused)]
+fn add_obj(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> io::Result<SceneNode> {
+    todo!()
 }

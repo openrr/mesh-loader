@@ -6,9 +6,13 @@
 )]
 #![warn(clippy::exhaustive_enums, clippy::exhaustive_structs)]
 
-#[cfg(any(feature = "collada", feature = "stl"))]
+#[cfg(any(feature = "collada", feature = "obj", feature = "stl"))]
 #[macro_use]
 mod error;
+
+#[cfg(any(feature = "collada", feature = "obj", feature = "stl"))]
+#[macro_use]
+mod trace;
 
 mod utils;
 
@@ -17,7 +21,7 @@ pub use common::*;
 
 #[cfg(feature = "collada")]
 pub mod collada;
-// #[cfg(feature = "obj")]
-// pub mod obj;
+#[cfg(feature = "obj")]
+pub mod obj;
 #[cfg(feature = "stl")]
 pub mod stl;
