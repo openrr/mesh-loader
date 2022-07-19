@@ -11,8 +11,6 @@
 mod error;
 
 mod utils;
-#[cfg(feature = "collada")]
-use utils::*;
 
 mod common;
 pub use common::*;
