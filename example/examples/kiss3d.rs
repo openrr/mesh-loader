@@ -49,7 +49,7 @@ fn main() -> Result<()> {
     let mut base = match path.extension().and_then(OsStr::to_str) {
         Some("stl" | "STL") => add_stl(&mut window, path, scale)?,
         Some("dae" | "DAE") => add_collada(&mut window, path, scale)?,
-        // Some("obj" | "OBJ") => add_obj(&mut window, path, scale)?,
+        Some("obj" | "OBJ") => add_obj(&mut window, path, scale)?,
         _ => bail!("unsupported file type {path:?}"),
     };
     base.set_local_scale(args.scale.0, args.scale.1, args.scale.2);
@@ -72,11 +72,7 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn add_stl(
-    window: &mut Window,
-    path: impl AsRef<Path>,
-    scale: na::Vector3<f32>,
-) -> io::Result<SceneNode> {
+fn add_stl(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> io::Result<SceneNode> {
     let stl = mesh_loader::stl::from_slice(&fs::read(path)?)?;
     let mesh = kiss3d::resource::Mesh::new(
         stl.vertices.into_iter().map(Into::into).collect(),
@@ -98,12 +94,7 @@ fn add_stl(
     Ok(window.add_mesh(mesh, scale))
 }
 
-fn add_collada(
-    window: &mut Window,
-    path: impl AsRef<Path>,
-    scale: na::Vector3<f32>,
-) -> Result<SceneNode> {
-    let path = path.as_ref();
+fn add_collada(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> Result<SceneNode> {
     let mut base = window.add_group();
     let collada = mesh_loader::collada::from_str(&fs::read_to_string(path)?)?;
     for mesh in collada.meshes {
@@ -150,4 +141,9 @@ fn add_collada(
         // }
     }
     Ok(base)
+}
+
+#[allow(unused)]
+fn add_obj(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> io::Result<SceneNode> {
+    todo!()
 }

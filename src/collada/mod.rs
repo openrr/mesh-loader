@@ -1,4 +1,4 @@
-//! [COLLADA] parser.
+//! [COLLADA] (.dae) parser.
 //!
 //! [COLLADA]: https://en.wikipedia.org/wiki/COLLADA
 
@@ -12,8 +12,10 @@ use indexmap::IndexMap;
 
 use self::geometry::*;
 use crate::{
-    float, int,
-    xml::{self, XmlNodeExt},
+    utils::{
+        float, int,
+        xml::{self, XmlNodeExt},
+    },
     Scene,
 };
 

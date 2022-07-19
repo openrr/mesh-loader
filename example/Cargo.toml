@@ -5,7 +5,7 @@ edition = "2021"
 publish = false
 
 [dev-dependencies]
-mesh-loader = { path = ".." }
+mesh-loader = { path = "..", features = ["tracing"] }
 
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
