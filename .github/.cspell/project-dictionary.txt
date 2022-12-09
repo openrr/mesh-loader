@@ -10,15 +10,11 @@ endloop
 endsolid
 gltf
 IDREF
-indexmap
 linestrips
-memchr
 nalgebra
 NMTOKEN
 polylist
 powerset
-roxmltree
-rustc
 rustdocflags
 rustflags
 rustfmt
