@@ -39,6 +39,6 @@ rustc-hash = { version = "1.1", optional = true }
 
 # Used in COLLADA parsing.
 indexmap = { version = "1.5.2", optional = true, features = ["std"] }
-roxmltree = { version = "0.15", optional = true }
+roxmltree = { version = "0.17", optional = true }
 
 [dev-dependencies]
