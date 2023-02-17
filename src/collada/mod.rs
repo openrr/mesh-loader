@@ -123,7 +123,7 @@ impl<'a, 'input> ColladaXmlNodeExt<'a, 'input> for xml::Node<'a, 'input> {
                 e,
                 name,
                 self.tag_name().name(),
-                self.attr_value_location(name),
+                self.attr_location(name),
             )
         })
     }
@@ -136,7 +136,7 @@ impl<'a, 'input> ColladaXmlNodeExt<'a, 'input> for xml::Node<'a, 'input> {
                     e,
                     name,
                     self.tag_name().name(),
-                    self.attr_value_location(name),
+                    self.attr_location(name),
                 )
             })
         } else {
