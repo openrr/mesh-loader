@@ -2,7 +2,6 @@ assimp
 binormal
 bitangent
 brep
-clippy
 collada
 elems
 endfacet
@@ -20,6 +19,7 @@ rustflags
 rustfmt
 rustup
 SIDREF
+SIGINT
 splitn
 texbinormal
 texcoord
