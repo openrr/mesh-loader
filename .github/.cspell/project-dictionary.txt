@@ -19,7 +19,6 @@ rustflags
 rustfmt
 rustup
 SIDREF
-SIGINT
 splitn
 texbinormal
 texcoord
