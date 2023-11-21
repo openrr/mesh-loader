@@ -1,9 +1,3 @@
-#![warn(
-    missing_debug_implementations,
-    rust_2018_idioms,
-    single_use_lifetimes,
-    unreachable_pub
-)]
 #![warn(clippy::exhaustive_enums, clippy::exhaustive_structs)]
 
 #[cfg(any(feature = "collada", feature = "stl"))]
