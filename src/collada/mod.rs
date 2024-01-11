@@ -6,25 +6,25 @@ mod geometry;
 mod instance;
 mod iter;
 
-use std::{cmp, collections::HashMap, fmt, io, marker::PhantomData, ops, str, str::FromStr};
-
-use indexmap::IndexMap;
+use std::{
+    cmp, collections::BTreeMap, collections::HashMap, fmt, io, marker::PhantomData, ops, str,
+    str::FromStr,
+};
 
 use self::geometry::*;
 use crate::{
-    utils::{
-        float, int,
-        xml::{self, XmlNodeExt},
-    },
+    utils::xml::{self, XmlNodeExt},
     Scene,
 };
 
 /// Parses meshes from bytes of COLLADA text.
+#[inline]
 pub fn from_slice(bytes: &[u8]) -> io::Result<Scene> {
     from_str(str::from_utf8(bytes).map_err(crate::error::invalid_data)?)
 }
 
 /// Parses meshes from a string of COLLADA text.
+#[inline]
 pub fn from_str(s: &str) -> io::Result<Scene> {
     let xml = xml::Document::parse(s).map_err(crate::error::invalid_data)?;
     let collada = Document::parse(&xml)?;
@@ -35,7 +35,7 @@ pub fn from_str(s: &str) -> io::Result<Scene> {
 
 // Inspired by gltf-json's `Get` trait.
 /// Helper trait for retrieving top-level objects by a universal identifier.
-pub(crate) trait Get<T> {
+trait Get<T> {
     type Target;
 
     fn get(&self, uri: &T) -> Option<&Self::Target>;
@@ -58,10 +58,10 @@ impl_get_by_uri!(ArrayData, library_geometries.array_data);
 impl_get_by_uri!(Geometry, library_geometries.geometries);
 
 #[derive(Debug)]
-pub(crate) struct Uri<T>(String, PhantomData<fn() -> T>);
+struct Uri<T>(String, PhantomData<fn() -> T>);
 
 impl<T> Uri<T> {
-    pub(crate) fn parse(url: &str) -> io::Result<Self> {
+    fn parse(url: &str) -> io::Result<Self> {
         // skipping the leading #, hopefully the remaining text is the accessor ID only
         if let Some(url) = url.strip_prefix('#') {
             Ok(Self(url.to_owned(), PhantomData))
@@ -70,12 +70,12 @@ impl<T> Uri<T> {
         }
     }
 
-    pub(crate) fn cast<U>(self) -> Uri<U> {
+    fn cast<U>(self) -> Uri<U> {
         Uri(self.0, PhantomData)
     }
 
     #[allow(dead_code)] // TODO(material)
-    pub(crate) fn as_str(&self) -> &str {
+    fn as_str(&self) -> &str {
         &self.0
     }
 }
@@ -98,18 +98,20 @@ where
 }
 
 impl<T> PartialEq<Uri<T>> for str {
+    #[inline]
     fn eq(&self, other: &Uri<T>) -> bool {
         self == other.0
     }
 }
 
 impl<T> PartialEq<Uri<T>> for String {
+    #[inline]
     fn eq(&self, other: &Uri<T>) -> bool {
         *self == other.0
     }
 }
 
-pub(crate) trait ColladaXmlNodeExt<'a, 'input> {
+trait ColladaXmlNodeExt<'a, 'input> {
     fn parse_url<T>(&self, name: &str) -> io::Result<Uri<T>>;
     fn parse_url_opt<T>(&self, name: &str) -> io::Result<Option<Uri<T>>>;
 }
@@ -146,13 +148,13 @@ impl<'a, 'input> ColladaXmlNodeExt<'a, 'input> for xml::Node<'a, 'input> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct Version {
-    pub(crate) minor: u32,
-    pub(crate) patch: u32,
+struct Version {
+    minor: u32,
+    patch: u32,
 }
 
 impl Version {
-    pub(crate) const MIN: Self = Self { minor: 4, patch: 0 };
+    const MIN: Self = Self { minor: 4, patch: 0 };
 }
 
 impl FromStr for Version {
@@ -179,13 +181,13 @@ impl fmt::Display for Version {
     }
 }
 
-pub(crate) struct Context {
-    pub(crate) library_geometries: LibraryGeometries,
+struct Context {
+    library_geometries: LibraryGeometries,
 }
 
 #[derive(Debug)]
-pub(crate) struct Document {
-    pub(crate) library_geometries: LibraryGeometries,
+struct Document {
+    library_geometries: LibraryGeometries,
 }
 
 impl Document {
@@ -224,7 +226,7 @@ impl Document {
     - `<scene>` (0 or 1)
     - `<extra>` (0 or more)
     */
-    pub(crate) fn parse(doc: &xml::Document<'_>) -> io::Result<Self> {
+    fn parse(doc: &xml::Document<'_>) -> io::Result<Self> {
         let node = doc.root_element();
         if node.tag_name().name() != "COLLADA" {
             bail!("root element is not <COLLADA>");
@@ -256,7 +258,7 @@ impl Document {
         })
     }
 
-    pub(crate) fn get<T>(&self, url: &T) -> Option<&<Self as Get<T>>::Target>
+    fn get<T>(&self, url: &T) -> Option<&<Self as Get<T>>::Target>
     where
         Self: Get<T>,
     {
@@ -277,17 +279,17 @@ where
 }
 
 #[derive(Debug)]
-pub(crate) struct Source {
+struct Source {
     // Required
-    pub(crate) id: String,
+    id: String,
     // Optional
     #[allow(dead_code)]
-    pub(crate) name: Option<String>,
+    name: Option<String>,
 
     // 0 or 1
-    pub(crate) array_element: Option<ArrayElement>,
+    array_element: Option<ArrayElement>,
     // 0 or 1
-    pub(crate) accessor: Option<Accessor>,
+    accessor: Option<Accessor>,
 }
 
 impl Source {
@@ -355,14 +357,14 @@ impl Source {
 }
 
 #[derive(Debug)]
-pub(crate) struct ArrayElement {
+struct ArrayElement {
     // Required
-    pub(crate) id: String,
+    id: String,
     // Required
     #[allow(dead_code)]
-    pub(crate) count: u32,
+    count: u32,
 
-    pub(crate) data: ArrayData,
+    data: ArrayData,
 }
 
 fn parse_array_element(node: xml::Node<'_, '_>) -> io::Result<ArrayElement> {
@@ -371,7 +373,7 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> io::Result<ArrayElement> {
 
     let id = node.required_attribute("id")?;
     let count = node.parse_required_attribute("count")?;
-    let mut content = node.text().unwrap_or_default().trim();
+    let mut content = xml::trim(node.text().unwrap_or_default());
 
     // some exporters write empty data arrays, but we need to conserve them anyways because others might reference them
     if content.is_empty() {
@@ -403,13 +405,13 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> io::Result<ArrayElement> {
             while content
                 .as_bytes()
                 .first()
-                .map_or(false, |b| !b.is_ascii_whitespace())
+                .map_or(false, |&b| !xml::is_whitespace(b as char))
             {
                 n += 1;
             }
             values.push(content[..n].into());
 
-            content = content.get(n..).unwrap_or_default().trim_start();
+            content = xml::trim_start(content.get(n..).unwrap_or_default());
         }
 
         Ok(ArrayElement {
@@ -422,7 +424,7 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> io::Result<ArrayElement> {
         let mut values = Vec::with_capacity(count as _);
         // TODO: https://stackoverflow.com/questions/4325363/converting-a-number-with-comma-as-decimal-point-to-float
         let content = content.replace(',', ".");
-        for res in float::parse_array_exact(&content, count as _) {
+        for res in xml::parse_float_array_exact(&content, count as _) {
             let value = res.map_err(|e| {
                 format_err!(
                     "{} in <{}> element ({})",
@@ -444,7 +446,7 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> io::Result<ArrayElement> {
 
 /// Data source array.
 #[derive(Debug)]
-pub(crate) enum ArrayData {
+enum ArrayData {
     /// <float_array>
     Float(Vec<f32>),
     /// <IDREF_array> or <Name_array>
@@ -458,36 +460,36 @@ pub(crate) enum ArrayData {
 
 #[allow(dead_code)] // TODO(material)
 impl ArrayData {
-    pub(crate) fn is_float(&self) -> bool {
+    fn is_float(&self) -> bool {
         matches!(self, Self::Float(..))
     }
 
-    pub(crate) fn is_string(&self) -> bool {
+    fn is_string(&self) -> bool {
         matches!(self, Self::String(..))
     }
 
-    pub(crate) fn as_float(&self) -> Option<&[f32]> {
+    fn as_float(&self) -> Option<&[f32]> {
         match self {
             Self::Float(v) => Some(v),
             Self::String(..) => None,
         }
     }
 
-    pub(crate) fn as_string(&self) -> Option<&[String]> {
+    fn as_string(&self) -> Option<&[String]> {
         match self {
             Self::Float(..) => None,
             Self::String(v) => Some(v),
         }
     }
 
-    pub(crate) fn len(&self) -> usize {
+    fn len(&self) -> usize {
         match self {
             Self::Float(v) => v.len(),
             Self::String(v) => v.len(),
         }
     }
 
-    pub(crate) fn is_empty(&self) -> bool {
+    fn is_empty(&self) -> bool {
         match self {
             Self::Float(v) => v.is_empty(),
             Self::String(v) => v.is_empty(),
@@ -496,20 +498,20 @@ impl ArrayData {
 }
 
 #[derive(Debug)]
-pub(crate) struct Accessor {
+struct Accessor {
     // Required
-    pub(crate) count: u32,
+    count: u32,
     // Optional
     #[allow(dead_code)] // TODO(material)
-    pub(crate) offset: u32,
+    offset: u32,
     // Required
-    pub(crate) source: Uri<ArrayData>,
+    source: Uri<ArrayData>,
     // Optional
-    pub(crate) stride: u32,
+    stride: u32,
 
     // 0 or more
     #[allow(dead_code)] // TODO(material)
-    pub(crate) params: Vec<Param>,
+    params: Vec<Param>,
 }
 
 impl Accessor {
@@ -554,15 +556,15 @@ impl Accessor {
 
 #[allow(dead_code)] // TODO(material)
 #[derive(Debug)]
-pub(crate) struct Param {
+struct Param {
     /// The name of this element.
-    pub(crate) name: Option<String>,
+    name: Option<String>,
     /// The scoped identifier of this element.
-    pub(crate) sid: Option<String>,
+    sid: Option<String>,
     // Required
-    pub(crate) ty: String,
+    ty: String,
     // Optional
-    pub(crate) semantic: Option<String>,
+    semantic: Option<String>,
 }
 
 impl Param {
@@ -590,15 +592,15 @@ impl Param {
 }
 
 #[derive(Debug)]
-pub(crate) struct SharedInput<T = Accessor> {
+struct SharedInput<T = Accessor> {
     // Required
-    pub(crate) offset: u32,
+    offset: u32,
     // Required
-    pub(crate) semantic: InputSemantic,
+    semantic: InputSemantic,
     // Required
-    pub(crate) source: Uri<T>,
+    source: Uri<T>,
     // Optional
-    pub(crate) set: u32,
+    set: u32,
 }
 
 impl<T> SharedInput<T> {
@@ -625,7 +627,7 @@ impl<T> SharedInput<T> {
         })
     }
 
-    pub(crate) fn cast<U>(self) -> SharedInput<U> {
+    fn cast<U>(self) -> SharedInput<U> {
         SharedInput {
             offset: self.offset,
             semantic: self.semantic,
@@ -636,11 +638,11 @@ impl<T> SharedInput<T> {
 }
 
 #[derive(Debug)]
-pub(crate) struct UnsharedInput {
+struct UnsharedInput {
     // Required
-    pub(crate) semantic: InputSemantic,
+    semantic: InputSemantic,
     // Required
-    pub(crate) source: Uri<Accessor>,
+    source: Uri<Accessor>,
 }
 
 impl UnsharedInput {
@@ -663,7 +665,7 @@ impl UnsharedInput {
 // refs: https://www.khronos.org/files/collada_spec_1_5.pdf#page=88
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum InputSemantic {
+enum InputSemantic {
     /// Geometric binormal (bitangent) vector.
     BINORMAL,
     /// Color coordinate vector. Color inputs are RGB (float3_type).
@@ -749,7 +751,7 @@ mod error {
     use super::*;
 
     #[cold]
-    pub(crate) fn one_or_more_elems(node: xml::Node<'_, '_>, name: &str) -> io::Error {
+    pub(super) fn one_or_more_elems(node: xml::Node<'_, '_>, name: &str) -> io::Error {
         format_err!(
             "<{}> element must be contain one or more <{}> elements ({})",
             node.tag_name().name(),
@@ -759,7 +761,7 @@ mod error {
     }
 
     #[cold]
-    pub(crate) fn exactly_one_elem(node: xml::Node<'_, '_>, name: &str) -> io::Error {
+    pub(super) fn exactly_one_elem(node: xml::Node<'_, '_>, name: &str) -> io::Error {
         format_err!(
             "<{}> element must be contain exactly one <{}> element ({})",
             node.tag_name().name(),
@@ -769,7 +771,7 @@ mod error {
     }
 
     #[cold]
-    pub(crate) fn multiple_elems(node: xml::Node<'_, '_>) -> io::Error {
+    pub(super) fn multiple_elems(node: xml::Node<'_, '_>) -> io::Error {
         format_err!(
             "multiple <{}> elements ({})",
             node.tag_name().name(),
@@ -778,7 +780,7 @@ mod error {
     }
 
     #[cold]
-    pub(crate) fn unexpected_child_elem(child: xml::Node<'_, '_>) -> io::Error {
+    pub(super) fn unexpected_child_elem(child: xml::Node<'_, '_>) -> io::Error {
         format_err!(
             "unexpected child element <{}> in <{}> element ({})",
             child.tag_name().name(),
@@ -792,7 +794,7 @@ mod warn {
     use super::*;
 
     #[cold]
-    pub(crate) fn unsupported_child_elem(_child: xml::Node<'_, '_>) {
+    pub(super) fn unsupported_child_elem(_child: xml::Node<'_, '_>) {
         // warn!(
         //     "<{}> child element in <{}> element is unsupported ({})",
         //     child.tag_name().name(),

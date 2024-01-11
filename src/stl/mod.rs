@@ -4,22 +4,21 @@
 
 use std::{io, path::Path, str};
 
-use rustc_hash::FxHashMap;
-
 use crate::{
     error::{self, invalid_data, Location},
-    utils::bytes::Lines,
-    Mesh, Vec3,
+    utils::bytes::{trim_ascii, Lines},
+    Mesh, Scene, Vec3,
 };
 
-/// Parses a mesh from bytes of binary or ascii STL.
+/// Parses meshes from bytes of binary or ascii STL.
 #[inline]
-pub fn from_slice(bytes: &[u8]) -> io::Result<Mesh> {
-    from_slice_internal(bytes)
+pub fn from_slice(bytes: &[u8]) -> io::Result<Scene> {
+    let meshes = from_slice_internal(bytes)?;
+    Ok(Scene { meshes })
 }
 
 #[inline]
-fn from_slice_internal<T>(bytes: &[u8]) -> io::Result<T>
+fn from_slice_internal<T>(bytes: &[u8]) -> io::Result<Vec<T>>
 where
     T: FromStl,
 {
@@ -124,7 +123,7 @@ fn read_binary_header(bytes: &[u8]) -> io::Result<BinaryHeader> {
 }
 
 #[inline]
-fn read_binary_stl<T>(mut bytes: &[u8], header: BinaryHeader) -> io::Result<T>
+fn read_binary_stl<T>(mut bytes: &[u8], header: BinaryHeader) -> io::Result<Vec<T>>
 where
     T: FromStl,
 {
@@ -135,7 +134,7 @@ where
     T::reserve(&mut cx, header.num_triangles);
     read_binary_triangles_from_slice::<T>(&mut cx, bytes);
 
-    Ok(T::end(cx))
+    Ok(vec![T::end(cx)])
 }
 
 #[inline]
@@ -189,7 +188,7 @@ struct AsciiStlParser<'a> {
     column: usize,
 }
 
-fn read_ascii_stl<T>(bytes: &[u8], file: Option<&Path>) -> io::Result<T>
+fn read_ascii_stl<T>(bytes: &[u8], file: Option<&Path>) -> io::Result<Vec<T>>
 where
     T: FromStl,
 {
@@ -240,47 +239,54 @@ impl<'a> AsciiStlParser<'a> {
         Ok(())
     }
 
-    fn read_contents<T>(&mut self) -> io::Result<T>
+    fn read_contents<T>(&mut self) -> io::Result<Vec<T>>
     where
         T: FromStl,
     {
-        let mut cx = T::start();
+        let mut meshes = Vec::<T>::with_capacity(1);
+        loop {
+            let mut cx = T::start();
 
-        // solid [name]
-        if self.lines.next().is_none() {
-            bail!("unexpected eof");
-        }
-        self.expected("solid")?;
-        let has_space = self.skip_spaces();
-        if !self.bytes().is_empty() {
-            if !has_space {
-                bail!("unexpected token after `solid`");
+            // solid [name]
+            if self.lines.next().is_none() {
+                if meshes.is_empty() {
+                    bail!("unexpected eof");
+                }
+                return Ok(meshes);
             }
-            let text = str::from_utf8(self.bytes()).map_err(invalid_data)?;
-            let mut text = text.splitn(2, |c: char| c.is_ascii_whitespace());
-            if let Some(s) = text.next() {
-                T::set_name(&mut cx, s.trim());
+            self.expected("solid")?;
+            let has_space = self.skip_spaces();
+            if !self.bytes().is_empty() {
+                if !has_space {
+                    bail!("unexpected token after `solid`");
+                }
+                let text = str::from_utf8(self.bytes()).map_err(invalid_data)?;
+                let mut text = text.splitn(2, |c: char| c.is_ascii_whitespace());
                 if let Some(s) = text.next() {
-                    if !s.trim().is_empty() {
-                        bail!("unexpected token after name");
+                    T::set_name(&mut cx, trim_ascii(s));
+                    if let Some(s) = text.next() {
+                        if !trim_ascii(s).is_empty() {
+                            bail!("unexpected token after name");
+                        }
                     }
                 }
             }
-        }
 
-        loop {
-            self.read_line()?;
-            // endsolid [name]
-            if self.bytes().starts_with(b"endsolid") {
-                // TODO: check name
-                break;
+            loop {
+                self.read_line()?;
+                // endsolid [name]
+                if self.bytes().starts_with(b"endsolid") {
+                    // Skip checking endsolid because some exporters have generated the wrong STL about endsolid.
+                    // https://github.com/assimp/assimp/issues/3756
+                    break;
+                }
+
+                let triangle = self.read_triangle()?;
+                T::push_triangle(&mut cx, triangle);
             }
 
-            let triangle = self.read_triangle()?;
-            T::push_triangle(&mut cx, triangle);
+            meshes.push(T::end(cx));
         }
-
-        Ok(T::end(cx))
     }
 
     fn read_triangle(&mut self) -> io::Result<Triangle> {
@@ -411,71 +417,51 @@ trait FromStl: Sized {
     fn set_name(cx: &mut Self::Context, name: &str);
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
 struct Triangle {
     normal: Vec3,
     vertices: [Vec3; 3],
 }
 
-#[derive(Default)]
-struct ReadContext {
-    mesh: Mesh,
-    vertices_to_indices: FxHashMap<[u32; 3], usize>,
-    vertices_indices: [usize; 3],
-}
-
 impl FromStl for Mesh {
-    type Context = ReadContext;
+    type Context = Self;
 
     fn start() -> Self::Context {
-        ReadContext::default()
+        Self::Context::default()
     }
 
     fn end(mut cx: Self::Context) -> Self {
-        cx.mesh.vertices.shrink_to_fit();
-        cx.mesh.faces.shrink_to_fit();
-        cx.mesh.normals.shrink_to_fit();
-        cx.mesh
+        cx.vertices.shrink_to_fit();
+        cx.faces.shrink_to_fit();
+        cx.normals.shrink_to_fit();
+        cx
     }
 
     fn push_triangle(cx: &mut Self::Context, triangle: Triangle) {
-        for (i, vertex) in triangle.vertices.iter().enumerate() {
-            let bits = [
-                vertex[0].to_bits(),
-                vertex[1].to_bits(),
-                vertex[2].to_bits(),
-            ];
+        // With binary STL, reserve checks that the max length of cx.vertices
+        // will not be greater than u32::MAX.
+        // With ASCII STL, the max length of cx.vertices will not be too large,
+        // since much more bytes is required per triangle than for binary STL.
+        let vertices_indices = [
+            cx.vertices.len() as u32,
+            (cx.vertices.len() + 1) as u32,
+            (cx.vertices.len() + 2) as u32,
+        ];
 
-            if let Some(&index) = cx.vertices_to_indices.get(&bits) {
-                cx.vertices_indices[i] = index;
-            } else {
-                let index = cx.mesh.vertices.len();
-                cx.vertices_to_indices.insert(bits, index);
-                cx.vertices_indices[i] = index;
-                cx.mesh.vertices.push(*vertex);
-            }
-        }
+        cx.vertices.extend_from_slice(&triangle.vertices);
 
-        cx.mesh.normals.push(triangle.normal);
-        cx.mesh.faces.push([
-            cx.vertices_indices[0].try_into().unwrap(),
-            cx.vertices_indices[1].try_into().unwrap(),
-            cx.vertices_indices[2].try_into().unwrap(),
-        ]);
+        cx.normals.push(triangle.normal);
+        cx.faces.push(vertices_indices);
     }
 
     fn reserve(cx: &mut Self::Context, num_triangles: u32) {
         // Use reserve_exact because binary stl has information on the exact number of triangles.
-        cx.mesh.faces.reserve_exact(num_triangles as _);
-        cx.mesh.normals.reserve_exact(num_triangles as _);
-        // The number of vertices can be up to three times the number of triangles,
-        // but is usually less than the number of triangles because of deduplication.
-        let cap = (num_triangles as f64 / 1.6) as usize;
-        cx.mesh.vertices.reserve(cap);
-        cx.vertices_to_indices.reserve(cap);
+        cx.vertices
+            .reserve(num_triangles.checked_mul(3).expect("too many triangles") as usize);
+        cx.faces.reserve_exact(num_triangles as usize);
+        cx.normals.reserve_exact(num_triangles as usize);
     }
 
     fn set_name(cx: &mut Self::Context, name: &str) {
-        cx.mesh.name = name.to_owned();
+        cx.name = name.to_owned();
     }
 }
