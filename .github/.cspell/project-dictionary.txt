@@ -16,7 +16,6 @@ polylist
 powerset
 rustdocflags
 rustflags
-rustfmt
 rustup
 SIDREF
 splitn
