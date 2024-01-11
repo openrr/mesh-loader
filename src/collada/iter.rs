@@ -7,7 +7,7 @@ use std::{
 use crate::{collada as ast, Vec3};
 
 impl ast::Document {
-    pub(crate) fn meshes(&self) -> Meshes<'_> {
+    pub(super) fn meshes(&self) -> Meshes<'_> {
         Meshes {
             iter: self.library_geometries.geometries.values().enumerate(),
             doc: self,
@@ -16,9 +16,10 @@ impl ast::Document {
 }
 
 #[derive(Debug)]
-pub(crate) struct Meshes<'a> {
-    pub(crate) iter: iter::Enumerate<indexmap::map::Values<'a, String, ast::Geometry>>,
-    pub(crate) doc: &'a ast::Document,
+pub(super) struct Meshes<'a> {
+    pub(super) iter:
+        iter::Enumerate<std::collections::btree_map::Values<'a, String, ast::Geometry>>,
+    pub(super) doc: &'a ast::Document,
 }
 
 impl<'a> Iterator for Meshes<'a> {
@@ -40,13 +41,13 @@ impl ExactSizeIterator for Meshes<'_> {}
 impl FusedIterator for Meshes<'_> {}
 
 #[derive(Debug, Clone)]
-pub(crate) struct Mesh<'a> {
-    pub(crate) doc: &'a ast::Document,
-    pub(crate) xml: &'a ast::Geometry,
+pub(super) struct Mesh<'a> {
+    pub(super) doc: &'a ast::Document,
+    pub(super) xml: &'a ast::Geometry,
 }
 
 impl<'a> Mesh<'a> {
-    pub(crate) fn primitives(&self) -> Primitives<'a> {
+    pub(super) fn primitives(&self) -> Primitives<'a> {
         Primitives {
             mesh: self.clone(),
             iter: self.xml.mesh.primitives.iter().enumerate(),
@@ -55,7 +56,7 @@ impl<'a> Mesh<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) struct Primitives<'a> {
+pub(super) struct Primitives<'a> {
     mesh: Mesh<'a>,
     iter: iter::Enumerate<slice::Iter<'a, ast::Primitive>>,
 }
@@ -80,13 +81,13 @@ impl ExactSizeIterator for Primitives<'_> {}
 impl FusedIterator for Primitives<'_> {}
 
 #[derive(Debug, Clone)]
-pub(crate) struct Primitive<'a> {
-    pub(crate) mesh: Mesh<'a>,
-    pub(crate) xml: &'a ast::Primitive,
+pub(super) struct Primitive<'a> {
+    pub(super) mesh: Mesh<'a>,
+    pub(super) xml: &'a ast::Primitive,
 }
 
 impl<'a> Primitive<'a> {
-    pub(crate) fn positions(&self) -> Positions<'a> {
+    pub(super) fn positions(&self) -> Positions<'a> {
         let input = match &self.xml.input {
             Some(input) => input,
             None => return Positions(None),
@@ -105,7 +106,7 @@ impl<'a> Primitive<'a> {
         }
     }
 
-    pub(crate) fn normals(&self) -> Normals<'a> {
+    pub(super) fn normals(&self) -> Normals<'a> {
         let acc = match &self.xml.input {
             Some(input) => match &input.normal {
                 Some(normal) => &self.mesh.doc[&normal.source],
@@ -130,7 +131,7 @@ impl<'a> Primitive<'a> {
         Positions(Some((acc.count, data.chunks(acc.stride as _))))
     }
 
-    pub(crate) fn texcoords(&self, set: usize) -> Texcoords<'a> {
+    pub(super) fn texcoords(&self, set: usize) -> Texcoords<'a> {
         let acc = match &self.xml.input {
             Some(input) => {
                 if let Some(texcoord) = input.texcoord.get(set) {
@@ -237,7 +238,7 @@ impl<'a> Primitive<'a> {
         }
     }
 
-    pub(crate) fn vertex_indices(&self) -> VertexIndices<'a> {
+    pub(super) fn vertex_indices(&self) -> VertexIndices<'a> {
         let offset = match &self.xml.input {
             Some(input) => input.vertex.offset,
             None => return VertexIndices::none(),
@@ -248,7 +249,7 @@ impl<'a> Primitive<'a> {
         }
     }
 
-    pub(crate) fn normal_indices(&self) -> VertexIndices<'a> {
+    pub(super) fn normal_indices(&self) -> VertexIndices<'a> {
         let offset = match &self.xml.input {
             Some(input) => match &input.normal {
                 Some(normal) => normal.offset,
@@ -273,7 +274,7 @@ impl<'a> Primitive<'a> {
         }
     }
 
-    pub(crate) fn texcoord_indices(&self, set: usize) -> VertexIndices<'a> {
+    pub(super) fn texcoord_indices(&self, set: usize) -> VertexIndices<'a> {
         let offset = match &self.xml.input {
             Some(input) => match input.texcoord.get(set) {
                 Some(texcoord) => texcoord.offset,
@@ -300,7 +301,7 @@ impl<'a> Primitive<'a> {
 }
 
 #[derive(Debug)]
-pub(crate) struct Positions<'a>(Option<(u32, slice::Chunks<'a, f32>)>);
+pub(super) struct Positions<'a>(Option<(u32, slice::Chunks<'a, f32>)>);
 
 impl Iterator for Positions<'_> {
     type Item = Vec3;
@@ -327,10 +328,10 @@ impl ExactSizeIterator for Positions<'_> {}
 
 impl FusedIterator for Positions<'_> {}
 
-pub(crate) type Normals<'a> = Positions<'a>;
+pub(super) type Normals<'a> = Positions<'a>;
 
 #[derive(Debug)]
-pub(crate) struct Texcoords<'a>(Option<TexcoordsInner<'a>>);
+pub(super) struct Texcoords<'a>(Option<TexcoordsInner<'a>>);
 
 #[derive(Debug)]
 struct TexcoordsInner<'a> {
@@ -364,7 +365,7 @@ impl ExactSizeIterator for Texcoords<'_> {}
 impl FusedIterator for Texcoords<'_> {}
 
 #[derive(Debug)]
-pub(crate) struct VertexIndices<'a> {
+pub(super) struct VertexIndices<'a> {
     remaining: u32,
     inner: IndicesInner<'a>,
 }
@@ -407,7 +408,7 @@ enum IndicesInner<'a> {
 }
 
 impl VertexIndices<'_> {
-    fn none() -> Self {
+    const fn none() -> Self {
         Self {
             remaining: 0,
             inner: IndicesInner::None,
@@ -571,8 +572,8 @@ impl ExactSizeIterator for VertexIndices<'_> {}
 impl FusedIterator for VertexIndices<'_> {}
 
 #[derive(Debug, Clone)]
-pub(crate) enum Face {
-    Point([u32; 1]),
-    Line([u32; 2]),
+pub(super) enum Face {
+    Point(#[allow(dead_code)] [u32; 1]),
+    Line(#[allow(dead_code)] [u32; 2]),
     Triangle([u32; 3]),
 }

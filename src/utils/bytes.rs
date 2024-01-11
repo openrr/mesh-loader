@@ -1,5 +1,10 @@
 use std::mem;
 
+#[inline]
+pub(crate) fn trim_ascii(s: &str) -> &str {
+    s.trim_matches(|c: char| c.is_ascii_whitespace())
+}
+
 pub(crate) struct Split<'a> {
     bytes: &'a [u8],
     separator: u8,

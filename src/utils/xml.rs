@@ -1,8 +1,154 @@
 // A module that provides utilities for parsing and visiting XML nodes.
 
-use std::{fmt, io, iter, str::FromStr};
+use std::{fmt, io, iter, marker::PhantomData, str::FromStr};
 
 pub(crate) use roxmltree::*;
+
+use super::int;
+
+#[must_use]
+#[inline]
+pub(crate) const fn is_whitespace(c: char) -> bool {
+    // https://www.w3.org/TR/xml/#NT-S
+    // Note: Unlike is_ascii_whitespace, FORM FEED ('\x0C') is not included.
+    matches!(c, '\t' | '\n' | '\r' | ' ')
+}
+
+#[inline]
+pub(crate) fn trim(s: &str) -> &str {
+    s.trim_matches(is_whitespace)
+}
+#[inline]
+pub(crate) fn trim_start(s: &str) -> &str {
+    s.trim_start_matches(is_whitespace)
+}
+
+// -----------------------------------------------------------------------------
+// Parsing array
+
+/// Parses integer array "<int> <int> <int>...".
+pub(crate) fn parse_int_array<T>(text: &str) -> ParseIntArray<'_, T>
+where
+    T: int::Int,
+{
+    ParseIntArray {
+        text: trim_start(text),
+        _marker: PhantomData,
+    }
+}
+
+pub(crate) struct ParseIntArray<'a, T> {
+    text: &'a str,
+    _marker: PhantomData<fn() -> T>,
+}
+
+impl<T> Iterator for ParseIntArray<'_, T>
+where
+    T: int::Int,
+{
+    type Item = io::Result<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.text.is_empty() {
+            return None;
+        }
+        match int::parse_partial(self.text.as_bytes()) {
+            Some((value, n)) => {
+                self.text = trim_start(self.text.get(n..).unwrap_or_default());
+                Some(Ok(value))
+            }
+            None => Some(Err(format_err!("error while parsing an integer"))),
+        }
+    }
+}
+
+/// Parses float array "<float> <float> <float>..."
+#[allow(dead_code)] // TODO
+pub(crate) fn parse_float_array<T>(text: &str) -> ParseFloatArray<'_, T>
+where
+    T: fast_float::FastFloat,
+{
+    ParseFloatArray {
+        text: trim_start(text),
+        _marker: PhantomData,
+    }
+}
+
+pub(crate) struct ParseFloatArray<'a, T> {
+    text: &'a str,
+    _marker: PhantomData<fn() -> T>,
+}
+
+impl<T> Iterator for ParseFloatArray<'_, T>
+where
+    T: fast_float::FastFloat,
+{
+    type Item = fast_float::Result<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.text.is_empty() {
+            return None;
+        }
+        match fast_float::parse_partial::<T, _>(self.text.as_bytes()) {
+            Ok((value, n)) => {
+                self.text = trim_start(self.text.get(n..).unwrap_or_default());
+                Some(Ok(value))
+            }
+            Err(e) => Some(Err(e)),
+        }
+    }
+}
+
+/// Parses float array "<float> <float> <float>..."
+pub(crate) fn parse_float_array_exact<T>(text: &str, num: usize) -> ParseFloatArrayExact<'_, T>
+where
+    T: fast_float::FastFloat,
+{
+    ParseFloatArrayExact {
+        text: trim_start(text),
+        num,
+        count: 0,
+        _marker: PhantomData,
+    }
+}
+
+pub(crate) struct ParseFloatArrayExact<'a, T> {
+    text: &'a str,
+    num: usize,
+    count: usize,
+    _marker: PhantomData<fn() -> T>,
+}
+
+impl<T> Iterator for ParseFloatArrayExact<'_, T>
+where
+    T: fast_float::FastFloat,
+{
+    type Item = io::Result<T>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.count >= self.num {
+            if self.text.is_empty() {
+                return None;
+            }
+            return Some(Err(format_err!(
+                "unexpected text {:?} after {} floats",
+                self.text,
+                self.num
+            )));
+        }
+        match fast_float::parse_partial::<T, _>(self.text.as_bytes()) {
+            Ok((value, n)) => {
+                self.text = trim_start(self.text.get(n..).unwrap_or_default());
+                self.count += 1;
+                Some(Ok(value))
+            }
+            Err(e) => Some(Err(crate::error::invalid_data(e))),
+        }
+    }
+}
+
+// -----------------------------------------------------------------------------
+// XmlNodeExt
 
 pub(crate) trait XmlNodeExt<'a, 'input> {
     fn element_children(&self) -> ElementChildren<'a, 'input>;

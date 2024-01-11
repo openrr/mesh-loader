@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 #![warn(clippy::exhaustive_enums, clippy::exhaustive_structs)]
 
 #[cfg(any(feature = "collada", feature = "stl"))]

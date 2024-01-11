@@ -32,14 +32,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy,rustfmt
+      - run: cargo test --workspace --all-features --exclude example
+
+  features:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-hack
         uses: taiki-e/install-action@cargo-hack
-      - run: cargo fmt --all --check
-      - run: cargo clippy --workspace --all-features --all-targets
       - run: cargo hack build --workspace --ignore-private --feature-powerset
-      - run: cargo test --workspace --all-features
+      - run: cargo hack build --workspace --ignore-private --feature-powerset --rust-version
+
+  fmt:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo fmt --all --check
+
+  clippy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo clippy --workspace --all-features --all-targets
+
+  docs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
       - run: cargo doc --workspace --all-features
 
   spell-check:

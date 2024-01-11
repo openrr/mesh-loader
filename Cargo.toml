@@ -1,7 +1,8 @@
 [package]
 name = "mesh-loader"
-version = "0.0.2"
+version = "0.1.0"
 edition = "2021"
+rust-version = "1.61"
 license = "Apache-2.0"
 repository = "https://github.com/openrr/mesh-loader"
 keywords = ["asset", "mesh", "stl", "collada"] # TODO: "obj"
@@ -11,19 +12,15 @@ description = """
 Fast parser for 3D-model-formats.
 """
 
-[workspace]
-resolver = "2"
-members = ["example"]
-
 [features]
 default = ["stl", "collada"]
 
 # STL (.stl)
 # https://en.wikipedia.org/wiki/STL_(file_format)
-stl = ["rustc-hash"]
+stl = ["memchr"]
 # COLLADA (.dae)
 # https://en.wikipedia.org/wiki/COLLADA
-collada = ["indexmap", "roxmltree"]
+collada = ["roxmltree"]
 # TODO
 # # Wavefront OBJ (.obj)
 # # https://en.wikipedia.org/wiki/Wavefront_.obj_file
@@ -32,19 +29,28 @@ collada = ["indexmap", "roxmltree"]
 [dependencies]
 # Used in all formats.
 fast-float = "0.2"
-memchr = "2.4"
 
 # Used in STL parsing.
-rustc-hash = { version = "1.1", optional = true }
+memchr = { version = "2.4", optional = true }
 
 # Used in COLLADA parsing.
-indexmap = { version = "2.0.0", optional = true, features = ["std"] }
 roxmltree = { version = "0.19", optional = true }
 
 [dev-dependencies]
+anyhow = "1"
+assimp = "0.3"
+duct = "0.13"
+fastrand = "2"
+fs-err = "2"
+quickcheck = { default-features = false, git = "https://github.com/taiki-e/quickcheck.git", branch = "dev" } # https://github.com/BurntSushi/quickcheck/pull/304 + https://github.com/BurntSushi/quickcheck/pull/282 + lower MSRV
+walkdir = "2"
 
 [lints]
 workspace = true
+
+[workspace]
+resolver = "2"
+members = ["example"]
 
 [workspace.lints.rust]
 missing_debug_implementations = "warn"

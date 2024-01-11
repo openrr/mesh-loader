@@ -1,7 +1,7 @@
 use super::*;
 use crate::common;
 
-pub(crate) fn build_meshes(doc: &Document) -> Vec<common::Mesh> {
+pub(super) fn build_meshes(doc: &Document) -> Vec<common::Mesh> {
     let mut meshes = Vec::with_capacity(doc.library_geometries.geometries.len());
 
     for mesh_ref in doc.meshes() {

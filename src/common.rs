@@ -25,3 +25,35 @@ pub struct Mesh {
     pub faces: Vec<Face>,
     pub colors: [Vec<Color4>; MAX_NUMBER_OF_COLOR_SETS],
 }
+
+impl Mesh {
+    #[inline]
+    pub fn merge(mut meshes: Vec<Self>) -> Self {
+        if meshes.len() <= 1 {
+            return meshes.pop().unwrap_or_default();
+        }
+        let mut vertices = Vec::with_capacity(meshes.iter().map(|m| m.vertices.len()).sum());
+        for m in &meshes {
+            vertices.extend_from_slice(&m.vertices);
+        }
+        let mut faces = Vec::with_capacity(meshes.iter().map(|m| m.faces.len()).sum());
+        let mut last = 0;
+        for m in &meshes {
+            if m.faces.is_empty() {
+                continue;
+            }
+            faces.extend(
+                m.faces
+                    .iter()
+                    .map(|f| [f[0] + last, f[1] + last, f[2] + last]),
+            );
+            last = m.faces.last().unwrap()[2] + 1;
+        }
+        Self {
+            name: String::new(),
+            vertices,
+            faces,
+            ..Default::default() // TODO
+        }
+    }
+}

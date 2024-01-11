@@ -9,9 +9,7 @@ mesh-loader = { path = ".." }
 
 anyhow = "1"
 clap = { version = "3", features = ["derive"] }
-kiss3d = "0.35"
-tracing = { version = "0.1", default-features = false, features = ["std"] }
-tracing-subscriber = { version = "0.3", default-features = false, features = ["ansi", "env-filter"] }
+kiss3d = { git = "https://github.com/sebcrozet/kiss3d.git", rev = "da70cd0", features = ["vertex_index_u32"] }
 
 [lints]
 workspace = true

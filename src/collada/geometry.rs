@@ -4,58 +4,58 @@ use super::*;
 ///
 /// [spec]: https://www.khronos.org/files/collada_spec_1_4.pdf#page=99
 #[derive(Debug, Default)]
-pub(crate) struct LibraryGeometries {
+pub(super) struct LibraryGeometries {
     /// The unique identifier of this element.
-    pub(crate) id: Option<String>,
+    pub(super) id: Option<String>,
     /// The name of this element.
-    pub(crate) name: Option<String>,
+    pub(super) name: Option<String>,
 
-    pub(crate) geometries: IndexMap<String, Geometry>,
+    pub(super) geometries: BTreeMap<String, Geometry>,
 
-    pub(crate) accessors: HashMap<String, Accessor>,
-    pub(crate) array_data: HashMap<String, ArrayData>,
+    pub(super) accessors: HashMap<String, Accessor>,
+    pub(super) array_data: HashMap<String, ArrayData>,
 }
 
 /// See [specification][spec] for details.
 ///
 /// [spec]: https://www.khronos.org/files/collada_spec_1_4.pdf#page=68
 #[derive(Debug)]
-pub(crate) struct Geometry {
+pub(super) struct Geometry {
     /// The unique identifier of this element.
-    pub(crate) id: String,
+    pub(super) id: String,
     /// The name of this element.
     #[allow(dead_code)] // TODO
-    pub(crate) name: Option<String>,
+    pub(super) name: Option<String>,
 
-    pub(crate) mesh: Mesh,
+    pub(super) mesh: Mesh,
 }
 
 #[derive(Debug)]
-pub(crate) struct Mesh {
-    pub(crate) vertices: Vertices,
-    pub(crate) primitives: Vec<Primitive>,
+pub(super) struct Mesh {
+    pub(super) vertices: Vertices,
+    pub(super) primitives: Vec<Primitive>,
 }
 
 #[derive(Debug)]
-pub(crate) struct VerticesInputs {
-    pub(crate) position: UnsharedInput,
-    pub(crate) normal: Option<UnsharedInput>,
-    pub(crate) texcoord: Option<UnsharedInput>,
+pub(super) struct VerticesInputs {
+    pub(super) position: UnsharedInput,
+    pub(super) normal: Option<UnsharedInput>,
+    pub(super) texcoord: Option<UnsharedInput>,
 }
 
 #[derive(Debug)]
-pub(crate) struct Vertices {
+pub(super) struct Vertices {
     /// The unique identifier of this element.
-    pub(crate) id: String,
+    pub(super) id: String,
     /// The name of this element.
     #[allow(dead_code)] // TODO
-    pub(crate) name: Option<String>,
+    pub(super) name: Option<String>,
 
-    pub(crate) input: VerticesInputs,
+    pub(super) input: VerticesInputs,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) enum PrimitiveType {
+pub(super) enum PrimitiveType {
     /// The `<lines>` element.
     Lines,
     /// The `<linestrips>` element.
@@ -73,7 +73,7 @@ pub(crate) enum PrimitiveType {
 }
 
 impl PrimitiveType {
-    pub(crate) fn face_size(self) -> Option<u32> {
+    pub(super) fn face_size(self) -> Option<u32> {
         match self {
             PrimitiveType::Lines | PrimitiveType::LineStrips => Some(2),
             PrimitiveType::Triangles | PrimitiveType::TriFans | PrimitiveType::TriStrips => Some(3),
@@ -81,36 +81,36 @@ impl PrimitiveType {
         }
     }
 
-    pub(crate) fn min_face_size(self) -> u32 {
+    pub(super) fn min_face_size(self) -> u32 {
         self.face_size().unwrap_or(1)
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct PrimitiveInputs {
-    pub(crate) vertex: SharedInput<Vertices>,
-    pub(crate) normal: Option<SharedInput>,
+pub(super) struct PrimitiveInputs {
+    pub(super) vertex: SharedInput<Vertices>,
+    pub(super) normal: Option<SharedInput>,
     #[allow(dead_code)] // TODO(material)
-    pub(crate) color: Option<SharedInput>,
-    pub(crate) texcoord: Vec<SharedInput>,
+    pub(super) color: Option<SharedInput>,
+    pub(super) texcoord: Vec<SharedInput>,
 }
 
 #[derive(Debug)]
-pub(crate) struct Primitive {
+pub(super) struct Primitive {
     /// The type of this element.
-    pub(crate) ty: PrimitiveType,
+    pub(super) ty: PrimitiveType,
 
     /// The name of this element.
     #[allow(dead_code)] // TODO
-    pub(crate) name: Option<String>,
+    pub(super) name: Option<String>,
     /// The number of primitives.
-    pub(crate) count: u32,
+    pub(super) count: u32,
     /// A symbol for a material.
     #[allow(dead_code)] // TODO(material)
-    pub(crate) material: Option<String>,
+    pub(super) material: Option<String>,
 
     /// Declares the input semantics of a data source and connects a consumer to that source.
-    pub(crate) input: Option<PrimitiveInputs>,
+    pub(super) input: Option<PrimitiveInputs>,
     /// The number of vertices for one polygon.
     ///
     /// Only [polylist] actually have a vcount element, but we use this field to
@@ -132,17 +132,17 @@ pub(crate) struct Primitive {
     /// [triangles]: PrimitiveType::Triangles
     /// [trifans]: PrimitiveType::TriFans
     /// [tristrips]: PrimitiveType::TriStrips
-    pub(crate) vcount: Vec<u32>,
+    pub(super) vcount: Vec<u32>,
     /// The vertex attributes (indices) for an individual primitive.
-    pub(crate) p: Vec<u32>,
+    pub(super) p: Vec<u32>,
 
-    pub(crate) stride: u32,
+    pub(super) stride: u32,
 }
 
-// =============================================================================
+// -----------------------------------------------------------------------------
 // Parsing
 
-pub(crate) fn parse_library_geometries(
+pub(super) fn parse_library_geometries(
     cx: &mut Context,
     node: xml::Node<'_, '_>,
 ) -> io::Result<()> {
@@ -369,7 +369,7 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Pri
                 vcount.reserve(count as _);
 
                 let content = node.text().unwrap_or_default();
-                let mut iter = int::parse_array::<u32>(content);
+                let mut iter = xml::parse_int_array::<u32>(content);
                 for _ in 0..count {
                     let value = iter.next().ok_or_else(|| {
                         format_err!(
@@ -425,7 +425,7 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Pri
                     p.reserve(expected_count * stride as usize);
 
                     // TODO: It seems some exporters put negative indices sometimes.
-                    for value in int::parse_array(node.text().unwrap_or_default()) {
+                    for value in xml::parse_int_array(node.text().unwrap_or_default()) {
                         p.push(value?);
                     }
 
@@ -451,7 +451,7 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Pri
                     let prev_len = p.len();
 
                     // TODO: It seems some exporters put negative indices sometimes.
-                    for value in int::parse_array(node.text().unwrap_or_default()) {
+                    for value in xml::parse_int_array(node.text().unwrap_or_default()) {
                         p.push(value?);
                     }
 
