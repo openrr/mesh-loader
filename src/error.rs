@@ -28,7 +28,7 @@ pub(crate) fn invalid_data(e: impl Into<Box<dyn std::error::Error + Send + Sync>
 
 #[cfg(feature = "stl")]
 #[cold]
-pub(crate) fn with_location(e: io::Error, location: Location<'_>) -> io::Error {
+pub(crate) fn with_location(e: &io::Error, location: &Location<'_>) -> io::Error {
     io::Error::new(e.kind(), format!("{e} ({location})"))
 }
 

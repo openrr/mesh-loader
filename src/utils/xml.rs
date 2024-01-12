@@ -4,10 +4,10 @@ use std::{fmt, io, iter, marker::PhantomData, str::FromStr};
 
 pub(crate) use roxmltree::*;
 
-use super::int;
+use super::{float, int};
 
-#[must_use]
 #[inline]
+#[must_use]
 pub(crate) const fn is_whitespace(c: char) -> bool {
     // https://www.w3.org/TR/xml/#NT-S
     // Note: Unlike is_ascii_whitespace, FORM FEED ('\x0C') is not included.
@@ -29,7 +29,7 @@ pub(crate) fn trim_start(s: &str) -> &str {
 /// Parses integer array "<int> <int> <int>...".
 pub(crate) fn parse_int_array<T>(text: &str) -> ParseIntArray<'_, T>
 where
-    T: int::Int,
+    T: int::Integer,
 {
     ParseIntArray {
         text: trim_start(text),
@@ -44,7 +44,7 @@ pub(crate) struct ParseIntArray<'a, T> {
 
 impl<T> Iterator for ParseIntArray<'_, T>
 where
-    T: int::Int,
+    T: int::Integer,
 {
     type Item = io::Result<T>;
 
@@ -66,7 +66,7 @@ where
 #[allow(dead_code)] // TODO
 pub(crate) fn parse_float_array<T>(text: &str) -> ParseFloatArray<'_, T>
 where
-    T: fast_float::FastFloat,
+    T: float::Float,
 {
     ParseFloatArray {
         text: trim_start(text),
@@ -81,20 +81,20 @@ pub(crate) struct ParseFloatArray<'a, T> {
 
 impl<T> Iterator for ParseFloatArray<'_, T>
 where
-    T: fast_float::FastFloat,
+    T: float::Float,
 {
-    type Item = fast_float::Result<T>;
+    type Item = io::Result<T>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.text.is_empty() {
             return None;
         }
-        match fast_float::parse_partial::<T, _>(self.text.as_bytes()) {
-            Ok((value, n)) => {
+        match float::parse_partial::<T>(self.text.as_bytes()) {
+            Some((value, n)) => {
                 self.text = trim_start(self.text.get(n..).unwrap_or_default());
                 Some(Ok(value))
             }
-            Err(e) => Some(Err(e)),
+            None => Some(Err(format_err!("error while parsing an integer"))),
         }
     }
 }
@@ -102,7 +102,7 @@ where
 /// Parses float array "<float> <float> <float>..."
 pub(crate) fn parse_float_array_exact<T>(text: &str, num: usize) -> ParseFloatArrayExact<'_, T>
 where
-    T: fast_float::FastFloat,
+    T: float::Float,
 {
     ParseFloatArrayExact {
         text: trim_start(text),
@@ -121,7 +121,7 @@ pub(crate) struct ParseFloatArrayExact<'a, T> {
 
 impl<T> Iterator for ParseFloatArrayExact<'_, T>
 where
-    T: fast_float::FastFloat,
+    T: float::Float,
 {
     type Item = io::Result<T>;
 
@@ -136,13 +136,13 @@ where
                 self.num
             )));
         }
-        match fast_float::parse_partial::<T, _>(self.text.as_bytes()) {
-            Ok((value, n)) => {
+        match float::parse_partial::<T>(self.text.as_bytes()) {
+            Some((value, n)) => {
                 self.text = trim_start(self.text.get(n..).unwrap_or_default());
                 self.count += 1;
                 Some(Ok(value))
             }
-            Err(e) => Some(Err(crate::error::invalid_data(e))),
+            None => Some(Err(format_err!("error while parsing an integer"))),
         }
     }
 }

@@ -455,6 +455,7 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Pri
                         p.push(value?);
                     }
 
+                    #[allow(clippy::cast_possible_truncation)]
                     let added = (p.len() - prev_len) as u32;
                     if added % stride != 0 {
                         bail!(

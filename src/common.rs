@@ -28,6 +28,7 @@ pub struct Mesh {
 
 impl Mesh {
     #[inline]
+    #[must_use]
     pub fn merge(mut meshes: Vec<Self>) -> Self {
         if meshes.len() <= 1 {
             return meshes.pop().unwrap_or_default();

@@ -110,7 +110,7 @@ fn uint() {
         u8::parse_partial(i8::MAX.to_string().as_bytes()).unwrap().0,
         i8::MAX as u8
     );
-    assert_eq!(u8::parse_partial("0".as_bytes()).unwrap().0, 0);
+    assert_eq!(u8::parse_partial(b"0").unwrap().0, 0);
     assert_eq!(
         u8::parse_partial((leading_str() + "0").as_bytes())
             .unwrap()
