@@ -1,6 +1,6 @@
 use std::{
     iter::{self, FusedIterator},
-    ops::RangeInclusive,
+    ops::Range,
     slice,
 };
 
@@ -378,7 +378,7 @@ enum IndicesInner<'a> {
         stride: u32,
         vcount: slice::Iter<'a, u32>,
         index: usize,
-        range: Option<RangeInclusive<u32>>,
+        range: Option<Range<u32>>,
     },
     Triangles {
         offset: u32,
@@ -390,7 +390,7 @@ enum IndicesInner<'a> {
         stride: u32,
         vcount: slice::Iter<'a, u32>,
         index: usize,
-        range: Option<RangeInclusive<u32>>,
+        range: Option<Range<u32>>,
     },
     Lines {
         offset: u32,
@@ -402,7 +402,7 @@ enum IndicesInner<'a> {
         stride: u32,
         vcount: slice::Iter<'a, u32>,
         index: usize,
-        range: Option<RangeInclusive<u32>>,
+        range: Option<Range<u32>>,
     },
     None,
 }
@@ -453,7 +453,7 @@ impl Iterator for VertexIndices<'_> {
                         // NOTE: Do *not* increment index until range ends.
                         return Some(value);
                     }
-                    let vc = *r.end() + 2;
+                    let vc = r.end + 1;
                     *index += stride * vc as usize;
                     *range = None;
                 }
@@ -482,7 +482,7 @@ impl Iterator for VertexIndices<'_> {
                     }
                     0 => unreachable!(),
                     _ => {
-                        let mut ri = 1..=vc - 2;
+                        let mut ri = 1..vc - 1;
                         let k = ri.next().unwrap();
                         let x = *index + offset;
                         let y = *index + offset + stride * k as usize;
@@ -531,7 +531,7 @@ impl Iterator for VertexIndices<'_> {
                         // NOTE: Do *not* increment index until range ends.
                         return Some(value);
                     }
-                    let vc = *r.end() + 1;
+                    let vc = r.end;
                     *index += stride * vc as usize;
                     *range = None;
                 }
@@ -546,14 +546,14 @@ impl Iterator for VertexIndices<'_> {
                     }
                     0..=2 => unreachable!(),
                     _ => {
-                        let mut ri = 1..=vc - 1;
-                        let k = ri.next().unwrap();
+                        let mut r = 1..vc;
+                        let k = r.next().unwrap();
                         let x = *index + offset;
                         let y = *index + offset + stride * k as usize;
                         let value = Face::Line([indices[x], indices[y]]);
                         // Set range for next call.
                         // NOTE: Do *not* increment index until range ends.
-                        *range = Some(ri);
+                        *range = Some(r);
                         Some(value)
                     }
                 }

@@ -11,6 +11,7 @@ pub(super) fn build_meshes(doc: &Document) -> Vec<common::Mesh> {
         };
 
         for prim in mesh_ref.primitives() {
+            #[allow(clippy::cast_possible_truncation)]
             let prev_positions_len = mesh.vertices.len() as u32;
             let p: Vec<_> = prim.positions().collect();
             let n: Vec<_> = prim.normals().collect();

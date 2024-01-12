@@ -5,37 +5,37 @@
 use std::{io, path::Path, str};
 
 use crate::{
-    error::{self, invalid_data, Location},
-    utils::bytes::{trim_ascii, Lines},
+    error::Location,
+    utils::{
+        bytes::{trim_ascii, Lines},
+        float,
+    },
     Mesh, Scene, Vec3,
 };
 
 /// Parses meshes from bytes of binary or ascii STL.
 #[inline]
 pub fn from_slice(bytes: &[u8]) -> io::Result<Scene> {
-    let meshes = from_slice_internal(bytes)?;
+    let meshes = from_slice_internal(bytes, None)?;
     Ok(Scene { meshes })
 }
 
 #[inline]
-fn from_slice_internal<T>(bytes: &[u8]) -> io::Result<Vec<T>>
-where
-    T: FromStl,
-{
+fn from_slice_internal(bytes: &[u8], path: Option<&Path>) -> io::Result<Vec<Mesh>> {
     match read_binary_header(bytes) {
-        Ok(header) => {
+        Some(header) => {
             if !header.maybe_ascii {
                 // fast path
-                read_binary_stl(bytes, header)
-            } else if is_ascii_stl(bytes, Some(&header))? {
-                read_ascii_stl(bytes, None)
+                Ok(read_binary_stl(bytes, header))
+            } else if is_ascii_stl(bytes, Some(header)) {
+                read_ascii_stl(bytes, path)
             } else {
-                read_binary_stl(bytes, header)
+                Ok(read_binary_stl(bytes, header))
             }
         }
-        Err(_) => {
-            if is_ascii_stl(bytes, None)? {
-                read_ascii_stl(bytes, None)
+        None => {
+            if is_ascii_stl(bytes, None) {
+                read_ascii_stl(bytes, path)
             } else {
                 bail!("failed to determine STL storage representation");
             }
@@ -46,20 +46,20 @@ where
 // An ascii STL buffer will begin with "solid NAME", where NAME is optional.
 // Note: The "solid NAME" check is necessary, but not sufficient, to determine
 // if the buffer is ASCII; a binary header could also begin with "solid NAME".
-fn is_ascii_stl(bytes: &[u8], header: Option<&BinaryHeader>) -> io::Result<bool> {
+fn is_ascii_stl(bytes: &[u8], header: Option<BinaryHeader>) -> bool {
     let mut is_ascii = if let Some(header) = header {
         header.maybe_ascii
     } else {
-        bytes.get(..5).ok_or_else(|| invalid_data("too small"))? == b"solid"
+        bytes.starts_with(b"solid")
     };
     if is_ascii {
         // A lot of importers are write solid even if the file is binary.
         // So we have to check for ASCII-characters.
-        if !bytes[5..].iter().all(u8::is_ascii) {
+        if !bytes[5..].is_ascii() {
             is_ascii = false;
         }
     }
-    Ok(is_ascii)
+    is_ascii
 }
 
 /*
@@ -80,19 +80,17 @@ const HEADER_SIZE: usize = 80;
 const TRIANGLE_COUNT_SIZE: usize = 4;
 const TRIANGLE_SIZE: usize = 50;
 
+#[derive(Clone, Copy)]
 struct BinaryHeader {
     num_triangles: u32,
     maybe_ascii: bool,
 }
 
-fn read_binary_header(bytes: &[u8]) -> io::Result<BinaryHeader> {
-    let header = bytes
-        .get(..HEADER_SIZE)
-        .ok_or_else(|| invalid_data("too small"))?;
+fn read_binary_header(bytes: &[u8]) -> Option<BinaryHeader> {
+    let header = bytes.get(..HEADER_SIZE)?;
 
     let num_triangles = bytes
-        .get(HEADER_SIZE..HEADER_SIZE + TRIANGLE_COUNT_SIZE)
-        .ok_or_else(|| invalid_data("too small"))?
+        .get(HEADER_SIZE..HEADER_SIZE + TRIANGLE_COUNT_SIZE)?
         .try_into()
         .unwrap();
     let mut num_triangles = u32::from_le_bytes(num_triangles);
@@ -102,9 +100,7 @@ fn read_binary_header(bytes: &[u8]) -> io::Result<BinaryHeader> {
     let mut size = bytes.len() as u64;
     size -= (HEADER_SIZE + TRIANGLE_COUNT_SIZE) as u64;
     size /= TRIANGLE_SIZE as u64;
-    let size: u32 = size
-        .try_into()
-        .map_err(|_| invalid_data("number of triangles is greater than u32::MAX"))?;
+    let size: u32 = size.try_into().ok()?;
 
     let correct_triangle_count = num_triangles == size;
     if !correct_triangle_count {
@@ -116,14 +112,14 @@ fn read_binary_header(bytes: &[u8]) -> io::Result<BinaryHeader> {
     // if the input is ASCII; a binary header could also begin with "solid NAME".
     let maybe_ascii = header.starts_with(b"solid");
 
-    Ok(BinaryHeader {
+    Some(BinaryHeader {
         num_triangles,
         maybe_ascii,
     })
 }
 
 #[inline]
-fn read_binary_stl<T>(mut bytes: &[u8], header: BinaryHeader) -> io::Result<Vec<T>>
+fn read_binary_stl<T>(mut bytes: &[u8], header: BinaryHeader) -> Vec<T>
 where
     T: FromStl,
 {
@@ -134,7 +130,7 @@ where
     T::reserve(&mut cx, header.num_triangles);
     read_binary_triangles_from_slice::<T>(&mut cx, bytes);
 
-    Ok(vec![T::end(cx)])
+    vec![T::end(cx)]
 }
 
 #[inline]
@@ -184,39 +180,42 @@ endsolid name
 */
 struct AsciiStlParser<'a> {
     lines: Lines<'a>,
-    file: Option<&'a Path>,
+    path: Option<&'a Path>,
     column: usize,
 }
 
-fn read_ascii_stl<T>(bytes: &[u8], file: Option<&Path>) -> io::Result<Vec<T>>
+fn read_ascii_stl<T>(bytes: &[u8], path: Option<&Path>) -> io::Result<Vec<T>>
 where
     T: FromStl,
 {
-    let mut p = AsciiStlParser::new(bytes, file);
+    let mut p = AsciiStlParser::new(bytes, path);
     match p.read_contents() {
         Ok(mesh) => Ok(mesh),
-        Err(e) => Err(error::with_location(e, p.location())),
+        Err(e) => Err(crate::error::with_location(
+            &crate::error::invalid_data(e),
+            &p.location(),
+        )),
     }
 }
 
 impl<'a> AsciiStlParser<'a> {
-    fn new(bytes: &'a [u8], file: Option<&'a Path>) -> Self {
+    fn new(bytes: &'a [u8], path: Option<&'a Path>) -> Self {
         Self {
             lines: Lines::new(bytes),
-            file,
+            path,
             column: 0,
         }
     }
 
     fn read_line(&mut self) -> io::Result<()> {
-        self.column = 0;
         while self.lines.next().is_some() {
+            self.column = 0;
             self.skip_spaces();
             if !self.bytes().is_empty() {
                 return Ok(());
             }
         }
-        bail!("unexpected eof")
+        Err(error::unexpected_eof())
     }
 
     fn bytes(&mut self) -> &[u8] {
@@ -231,11 +230,27 @@ impl<'a> AsciiStlParser<'a> {
         self.column != prev
     }
 
-    fn expected(&mut self, pat: &str) -> io::Result<()> {
+    fn expected(&mut self, pat: &'static str) -> io::Result<()> {
         if !self.bytes().starts_with(pat.as_bytes()) {
-            bail!("expected '{}'", pat);
+            return Err(error::expected_token(pat));
         }
         self.column += pat.len();
+        Ok(())
+    }
+
+    fn expected_with_space(&mut self, pat: &'static str) -> io::Result<()> {
+        self.expected(pat)?;
+        if !self.skip_spaces() {
+            return Err(error::expected_whitespace_after_token(pat));
+        }
+        Ok(())
+    }
+
+    fn expected_empty(&mut self, prev: &'static str) -> io::Result<()> {
+        self.skip_spaces();
+        if !self.bytes().is_empty() {
+            return Err(error::unexpected_token_after(prev));
+        }
         Ok(())
     }
 
@@ -250,7 +265,7 @@ impl<'a> AsciiStlParser<'a> {
             // solid [name]
             if self.lines.next().is_none() {
                 if meshes.is_empty() {
-                    bail!("unexpected eof");
+                    return Err(error::unexpected_eof());
                 }
                 return Ok(meshes);
             }
@@ -258,15 +273,15 @@ impl<'a> AsciiStlParser<'a> {
             let has_space = self.skip_spaces();
             if !self.bytes().is_empty() {
                 if !has_space {
-                    bail!("unexpected token after `solid`");
+                    return Err(error::unexpected_token_after("'solid'"));
                 }
-                let text = str::from_utf8(self.bytes()).map_err(invalid_data)?;
+                let text = str::from_utf8(self.bytes()).unwrap(); // we already checked the file is ASCII
                 let mut text = text.splitn(2, |c: char| c.is_ascii_whitespace());
                 if let Some(s) = text.next() {
                     T::set_name(&mut cx, trim_ascii(s));
                     if let Some(s) = text.next() {
                         if !trim_ascii(s).is_empty() {
-                            bail!("unexpected token after name");
+                            return Err(error::unexpected_token_after("'solid <name>'"));
                         }
                     }
                 }
@@ -290,68 +305,43 @@ impl<'a> AsciiStlParser<'a> {
     }
 
     fn read_triangle(&mut self) -> io::Result<Triangle> {
-        // facet normal <f32> <f32> <f32>
-        self.expected("facet normal ")?;
-        self.skip_spaces();
+        // facet normal <n1> <n2> <n3>
+        self.expected_with_space("facet normal")?;
         let normal = self.read_vec3d()?;
-        self.skip_spaces();
-        if !self.bytes().is_empty() {
-            bail!("unexpected token after normal");
-        }
+        self.expected_empty("'facet normal <n1> <n2> <n3>'")?;
 
         // outer loop
         self.read_line()?;
         self.expected("outer loop")?;
-        self.skip_spaces();
-        if !self.bytes().is_empty() {
-            bail!("unexpected token after `outer loop`");
-        }
+        self.expected_empty("'outer loop'")?;
 
-        // vertex <f32> <f32> <f32>
+        // vertex <v1x> <v1y> <v1z>
         self.read_line()?;
-        self.expected("vertex ")?;
-        self.skip_spaces();
+        self.expected_with_space("vertex")?;
         let vertex1 = self.read_vec3d()?;
-        self.skip_spaces();
-        if !self.bytes().is_empty() {
-            bail!("unexpected token after vertex");
-        }
+        self.expected_empty("'vertex <v1x> <v1y> <v1z>'")?;
 
-        // vertex <f32> <f32> <f32>
+        // vertex <v2x> <v2y> <v2z>
         self.read_line()?;
-        self.expected("vertex ")?;
-        self.skip_spaces();
+        self.expected_with_space("vertex")?;
         let vertex2 = self.read_vec3d()?;
-        self.skip_spaces();
-        if !self.bytes().is_empty() {
-            bail!("unexpected token after vertex");
-        }
+        self.expected_empty("'vertex <v2x> <v2y> <v2z>'")?;
 
-        // vertex <f32> <f32> <f32>
+        // vertex <v3x> <v3y> <v3z>
         self.read_line()?;
-        self.expected("vertex ")?;
-        self.skip_spaces();
+        self.expected_with_space("vertex")?;
         let vertex3 = self.read_vec3d()?;
-        self.skip_spaces();
-        if !self.bytes().is_empty() {
-            bail!("unexpected token after vertex");
-        }
+        self.expected_empty("'vertex <v3x> <v3y> <v3z>'")?;
 
         // endloop
         self.read_line()?;
         self.expected("endloop")?;
-        self.skip_spaces();
-        if !self.bytes().is_empty() {
-            bail!("unexpected token after `endloop`");
-        }
+        self.expected_empty("'endloop'")?;
 
         // endfacet
         self.read_line()?;
         self.expected("endfacet")?;
-        self.skip_spaces();
-        if !self.bytes().is_empty() {
-            bail!("unexpected token after `endfacet`");
-        }
+        self.expected_empty("'endfacet'")?;
 
         Ok(Triangle {
             normal,
@@ -361,16 +351,14 @@ impl<'a> AsciiStlParser<'a> {
 
     fn read_vec3d(&mut self) -> io::Result<Vec3> {
         let x = self.read_float()?;
-        if !self.bytes().first().map_or(false, u8::is_ascii_whitespace) {
-            bail!("expected whitespace after float");
+        if !self.skip_spaces() {
+            return Err(error::expected_whitespace_after("float"));
         }
-        self.skip_spaces();
 
         let y = self.read_float()?;
-        if !self.bytes().first().map_or(false, u8::is_ascii_whitespace) {
-            bail!("expected whitespace after float");
+        if !self.skip_spaces() {
+            return Err(error::expected_whitespace_after("float"));
         }
-        self.skip_spaces();
 
         let z = self.read_float()?;
 
@@ -378,9 +366,9 @@ impl<'a> AsciiStlParser<'a> {
     }
 
     fn read_float(&mut self) -> io::Result<f32> {
-        let (f, n) = match fast_float::parse_partial::<f32, _>(self.bytes()) {
-            Ok(n) => n,
-            Err(e) => bail!("{}", e),
+        let (f, n) = match float::parse_partial::<f32>(self.bytes()) {
+            Some(n) => n,
+            None => return Err(error::float()),
         };
         self.column += n;
         Ok(f)
@@ -388,7 +376,7 @@ impl<'a> AsciiStlParser<'a> {
 
     #[cold]
     fn location(&self) -> Location<'_> {
-        Location::new(self.file, self.lines.line_number(), self.column)
+        Location::new(self.path, self.lines.line_number(), self.column)
     }
 }
 
@@ -441,6 +429,7 @@ impl FromStl for Mesh {
         // will not be greater than u32::MAX.
         // With ASCII STL, the max length of cx.vertices will not be too large,
         // since much more bytes is required per triangle than for binary STL.
+        #[allow(clippy::cast_possible_truncation)]
         let vertices_indices = [
             cx.vertices.len() as u32,
             (cx.vertices.len() + 1) as u32,
@@ -463,5 +452,34 @@ impl FromStl for Mesh {
 
     fn set_name(cx: &mut Self::Context, name: &str) {
         cx.name = name.to_owned();
+    }
+}
+
+mod error {
+    use super::*;
+
+    #[cold]
+    pub(super) fn unexpected_eof() -> io::Error {
+        format_err!("unexpected eof")
+    }
+    #[cold]
+    pub(super) fn unexpected_token_after(prev: &str) -> io::Error {
+        format_err!("unexpected token after {}", prev)
+    }
+    #[cold]
+    pub(super) fn expected_token(name: &str) -> io::Error {
+        format_err!("expected '{}'", name)
+    }
+    #[cold]
+    pub(super) fn expected_whitespace_after_token(prev: &str) -> io::Error {
+        format_err!("expected whitespace after '{}'", prev)
+    }
+    #[cold]
+    pub(super) fn expected_whitespace_after(prev: &str) -> io::Error {
+        format_err!("expected whitespace after {}", prev)
+    }
+    #[cold]
+    pub(super) fn float() -> io::Error {
+        format_err!("error while parsing a float")
     }
 }
