@@ -1,3 +1,4 @@
+#![doc = include_str!("../README.md")]
 #![doc(test(
     no_crate_inject,
     attr(
