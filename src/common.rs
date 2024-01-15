@@ -1,3 +1,5 @@
+use std::fmt;
+
 pub(crate) type Vec2 = [f32; 2];
 pub(crate) type Vec3 = [f32; 3];
 pub(crate) type Face = [u32; 3];
@@ -15,7 +17,7 @@ pub struct Scene {
 }
 
 /// Triangle mesh
-#[derive(Debug, Default)]
+#[derive(Default)]
 #[non_exhaustive]
 pub struct Mesh {
     pub name: String,
@@ -33,9 +35,24 @@ impl Mesh {
         if meshes.len() <= 1 {
             return meshes.pop().unwrap_or_default();
         }
-        let mut vertices = Vec::with_capacity(meshes.iter().map(|m| m.vertices.len()).sum());
+
+        let num_vertices = meshes.iter().map(|m| m.vertices.len()).sum();
+        let mut vertices = Vec::with_capacity(num_vertices);
+        let mut normals = Vec::with_capacity(num_vertices);
+        // TODO: fill with default if one or more meshes has colors
+        let has_colors0 = num_vertices == meshes.iter().map(|m| m.colors[0].len()).sum();
+        let mut colors0 = Vec::with_capacity(if has_colors0 { num_vertices } else { 0 });
+        let has_colors1 = num_vertices == meshes.iter().map(|m| m.colors[1].len()).sum();
+        let mut colors1 = Vec::with_capacity(if has_colors1 { num_vertices } else { 0 });
         for m in &meshes {
             vertices.extend_from_slice(&m.vertices);
+            normals.extend_from_slice(&m.normals);
+            if has_colors0 {
+                colors0.extend_from_slice(&m.colors[0]);
+            }
+            if has_colors1 {
+                colors1.extend_from_slice(&m.colors[1]);
+            }
         }
         let mut faces = Vec::with_capacity(meshes.iter().map(|m| m.faces.len()).sum());
         let mut last = 0;
@@ -50,11 +67,29 @@ impl Mesh {
             );
             last = m.faces.last().unwrap()[2] + 1;
         }
+
         Self {
             name: String::new(),
             vertices,
+            texcoords: Default::default(), // TODO
+            normals,
             faces,
-            ..Default::default() // TODO
+            colors: [colors0, colors1],
         }
+    }
+}
+
+impl fmt::Debug for Mesh {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Mesh")
+            .field("name", &self.name)
+            .field("num_vertices", &self.vertices.len())
+            .field("num_texcoords0", &self.texcoords[0].len())
+            .field("num_texcoords1", &self.texcoords[1].len())
+            .field("num_normals", &self.normals.len())
+            .field("num_faces", &self.faces.len())
+            .field("num_colors0", &self.colors[0].len())
+            .field("num_colors1", &self.colors[1].len())
+            .finish()
     }
 }
