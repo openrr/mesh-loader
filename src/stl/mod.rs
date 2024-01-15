@@ -437,17 +437,16 @@ impl FromStl for Mesh {
         ];
 
         cx.vertices.extend_from_slice(&triangle.vertices);
-
-        cx.normals.push(triangle.normal);
+        cx.normals.extend_from_slice(&[triangle.normal; 3]);
         cx.faces.push(vertices_indices);
     }
 
     fn reserve(cx: &mut Self::Context, num_triangles: u32) {
+        let num_vertices = num_triangles.checked_mul(3).expect("too many triangles");
         // Use reserve_exact because binary stl has information on the exact number of triangles.
-        cx.vertices
-            .reserve(num_triangles.checked_mul(3).expect("too many triangles") as usize);
+        cx.vertices.reserve_exact(num_vertices as usize);
+        cx.normals.reserve_exact(num_vertices as usize);
         cx.faces.reserve_exact(num_triangles as usize);
-        cx.normals.reserve_exact(num_triangles as usize);
     }
 
     fn set_name(cx: &mut Self::Context, name: &str) {
