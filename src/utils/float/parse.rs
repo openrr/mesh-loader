@@ -29,29 +29,25 @@ const fn parse_8digits(mut v: u64) -> u64 {
 
 /// Parse digits until a non-digit character is found.
 #[inline]
-pub(crate) fn try_parse_digits(s_ref: &mut &[u8], x: &mut u64) {
-    let mut s = *s_ref;
-
+pub(crate) fn try_parse_digits(s: &mut &[u8], x: &mut u64) {
     // may cause overflows, to be handled later
     while s.len() >= 8 {
         let num = s.read_u64le();
         if is_8digits(num) {
             *x = x.wrapping_mul(1_0000_0000).wrapping_add(parse_8digits(num));
-            s = &s[8..];
+            *s = &s[8..];
         } else {
             break;
         }
     }
 
-    *s_ref = s.parse_digits(|digit| {
+    *s = s.parse_digits(|digit| {
         *x = x.wrapping_mul(10).wrapping_add(digit as _);
     });
 }
 
 /// Parse up to 19 digits (the max that can be stored in a 64-bit integer).
-fn try_parse_19digits(s_ref: &mut &[u8], x: &mut u64) {
-    let mut s = *s_ref;
-
+fn try_parse_19digits(s: &mut &[u8], x: &mut u64) {
     while *x < MIN_19DIGIT_INT {
         // FIXME: Can't use s.split_first() here yet,
         // see https://github.com/rust-lang/rust/issues/109328
@@ -60,7 +56,7 @@ fn try_parse_19digits(s_ref: &mut &[u8], x: &mut u64) {
 
             if digit < 10 {
                 *x = (*x * 10) + digit as u64; // no overflows here
-                s = s_next;
+                *s = s_next;
             } else {
                 break;
             }
@@ -68,26 +64,22 @@ fn try_parse_19digits(s_ref: &mut &[u8], x: &mut u64) {
             break;
         }
     }
-
-    *s_ref = s;
 }
 
 /// Parse the scientific notation component of a float.
-fn parse_scientific(s_ref: &mut &[u8]) -> Option<i64> {
+fn parse_scientific(s: &mut &[u8]) -> Option<i64> {
     let mut exponent = 0i64;
     let mut negative = false;
-
-    let mut s = *s_ref;
 
     if let Some((&c, s_next)) = s.split_first() {
         negative = c == b'-';
         if c == b'-' || c == b'+' {
-            s = s_next;
+            *s = s_next;
         }
     }
 
     if matches!(s.first(), Some(&x) if x.is_ascii_digit()) {
-        *s_ref = s.parse_digits(|digit| {
+        *s = s.parse_digits(|digit| {
             // no overflows here, saturate well before overflow
             if exponent < 0x10000 {
                 exponent = 10 * exponent + digit as i64;
@@ -99,7 +91,6 @@ fn parse_scientific(s_ref: &mut &[u8]) -> Option<i64> {
             Some(exponent)
         }
     } else {
-        *s_ref = s;
         None
     }
 }
@@ -210,14 +201,14 @@ pub(crate) fn parse_inf_nan<F: RawFloat>(s: &[u8], negative: bool) -> Option<(F,
     // This also generates much better code.
 
     let mut register;
-    let mut len: usize;
 
-    if s.len() >= 3 {
+    if s.len() >= 8 {
+        register = s.read_u64le();
+    } else if s.len() >= 3 {
         let a = s[0] as u64;
         let b = s[1] as u64;
         let c = s[2] as u64;
         register = (c << 16) | (b << 8) | a;
-        len = 3;
     } else {
         return None;
     }
@@ -235,18 +226,12 @@ pub(crate) fn parse_inf_nan<F: RawFloat>(s: &[u8], negative: bool) -> Option<(F,
     // Match register value to constant to parse string.
     // Also match on the string length to catch edge cases
     // like "inf\0\0\0\0\0".
-    let float = match (register, len) {
-        (INF_3, 3) => {
-            if s.len() >= 8 {
-                register = s.read_u64le();
-                register &= 0xDFDFDFDFDFDFDFDF;
-                if register == INF_8 {
-                    len = 8;
-                }
-            }
-            F::INFINITY
+    let (float, len) = match register & 0xFFFFFF {
+        INF_3 => {
+            let len = if register == INF_8 { 8 } else { 3 };
+            (F::INFINITY, len)
         }
-        (NAN, 3) => F::NAN,
+        NAN => (F::NAN, 3),
         _ => return None,
     };
 
