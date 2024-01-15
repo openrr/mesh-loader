@@ -2,12 +2,7 @@
 //
 // Source: https://github.com/fastfloat/fast_float/blob/68b9475585be0839fa0bf3d6bfad3e4a6357d90a/include/fast_float/ascii_number.h#L445
 
-#![allow(
-    clippy::cast_lossless,
-    clippy::cast_possible_truncation,
-    clippy::cast_sign_loss,
-    clippy::inline_always
-)]
+#![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 
 use self::integer::RawInteger;
 use crate::utils::float::{common::ByteSlice, parse::try_parse_digits};
@@ -145,8 +140,10 @@ fn parse_partial_number(
 
     // parse leading zeros
     let start = s;
-    while let Some(&b'0') = s.first() {
-        s = &s[1..];
+    // FIXME: Can't use s.split_first() here yet,
+    // see https://github.com/rust-lang/rust/issues/109328
+    while let [b'0', s_next @ ..] = s {
+        s = s_next;
     }
 
     // parse digits

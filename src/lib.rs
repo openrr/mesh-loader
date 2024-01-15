@@ -9,6 +9,8 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::exhaustive_enums, clippy::exhaustive_structs)]
 #![allow(
+    clippy::cast_lossless,
+    clippy::inline_always,
     clippy::match_same_arms, // https://github.com/rust-lang/rust-clippy/issues/12044
     clippy::missing_panics_doc,
     clippy::must_use_candidate,

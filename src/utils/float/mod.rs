@@ -16,12 +16,10 @@
 // - https://github.com/fastfloat/fast_float
 
 #![allow(
-    clippy::cast_lossless,
     clippy::cast_possible_truncation,
     clippy::cast_possible_wrap,
     clippy::cast_precision_loss,
     clippy::cast_sign_loss,
-    clippy::inline_always,
     clippy::items_after_statements,
     clippy::module_inception,
     clippy::redundant_else
