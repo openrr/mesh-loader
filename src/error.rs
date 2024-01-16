@@ -2,6 +2,8 @@ use std::io;
 #[cfg(feature = "stl")]
 use std::{fmt, path::Path};
 
+use crate::utils::bytes::{bytecount_naive, memrchr_naive};
+
 macro_rules! format_err {
     ($msg:expr $(,)?) => {
         crate::error::invalid_data($msg)
@@ -41,7 +43,12 @@ pub(crate) struct Location<'a> {
 
 #[cfg(feature = "stl")]
 impl<'a> Location<'a> {
-    pub(crate) fn new(file: Option<&'a Path>, line: usize, column: usize) -> Self {
+    #[cold]
+    #[inline(never)]
+    pub(crate) fn find(remaining: usize, start: &[u8], file: Option<&'a Path>) -> Self {
+        let pos = start.len() - remaining;
+        let line = bytecount_naive(b'\n', &start[..pos]) + 1;
+        let column = memrchr_naive(b'\n', &start[..pos]).unwrap_or(pos) + 1;
         Self {
             file: file.filter(|&p| p != Path::new("")),
             line,

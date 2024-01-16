@@ -15,6 +15,8 @@ idents
 IDREF
 Lemire
 linestrips
+memchr
+memrchr
 nalgebra
 NMTOKEN
 polylist

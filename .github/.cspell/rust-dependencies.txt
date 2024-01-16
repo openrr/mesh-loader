@@ -3,7 +3,6 @@
 
 assimp
 fastrand
-memchr
 quickcheck
 roxmltree
 walkdir
