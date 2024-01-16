@@ -17,7 +17,7 @@ default = ["stl", "collada"]
 
 # STL (.stl)
 # https://en.wikipedia.org/wiki/STL_(file_format)
-stl = ["memchr"]
+stl = []
 # COLLADA (.dae)
 # https://en.wikipedia.org/wiki/COLLADA
 collada = ["roxmltree"]
@@ -27,9 +27,6 @@ collada = ["roxmltree"]
 # obj = []
 
 [dependencies]
-# Used in STL parsing.
-memchr = { version = "2.4", optional = true }
-
 # Used in COLLADA parsing.
 roxmltree = { version = "0.19", optional = true }
 
