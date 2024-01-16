@@ -114,22 +114,28 @@ impl<B: AsRef<[u8]>> Loader<B> {
             #[cfg(feature = "stl")]
             Some("stl" | "STL") => self.load_stl_from_slice_(bytes, path),
             #[cfg(not(feature = "stl"))]
-            Some("stl" | "STL") => {
-                bail!("'stl' feature of mesh-loader must be enabled to parse STL");
-            }
+            Some("stl" | "STL") => Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "'stl' feature of mesh-loader must be enabled to parse STL file ({path:?})",
+            )),
             #[cfg(feature = "collada")]
             Some("dae" | "DAE") => self.load_from_slice_(bytes, path),
             #[cfg(not(feature = "collada"))]
-            Some("dae" | "DAE") => {
-                bail!("'collada' feature of mesh-loader must be enabled to parse COLLADA");
-            }
+            Some("dae" | "DAE") => Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "'collada' feature of mesh-loader must be enabled to parse COLLADA file ({path:?})",
+            )),
             // #[cfg(feature = "obj")]
             // Some("obj" | "OBJ") => self.load_obj_(path),
             // #[cfg(not(feature = "obj"))]
-            // Some("obj" | "OBJ") => {
-            //     bail!("'obj' feature of mesh-loader must be enabled to parse OBJ");
-            // }
-            _ => bail!("unsupported or unrecognized file type {path:?}"),
+            // Some("obj" | "OBJ") => Err(io::Error::new(
+            //     io::ErrorKind::Unsupported,
+            //     "'obj' feature of mesh-loader must be enabled to parse OBJ file ({path:?})",
+            // )),
+            _ => Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "unsupported or unrecognized file type {path:?}",
+            )),
         }
     }
 

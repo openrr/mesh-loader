@@ -19,6 +19,7 @@
     clippy::wildcard_imports, // TODO
 )]
 
+#[cfg(any(feature = "collada", feature = "stl"))]
 #[macro_use]
 mod error;
 
