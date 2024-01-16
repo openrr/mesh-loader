@@ -33,12 +33,16 @@ fn test() {
             Some("dae" | "DAE") => collada_models.insert(path.to_owned()),
             // Some("obj" | "OBJ") => obj_models.insert(path.to_owned()),
             Some("stl" | "STL") => stl_models.insert(path.to_owned()),
-            _ => false,
+            ext => match path.parent().unwrap().file_stem().and_then(OsStr::to_str) {
+                Some("Collada") if ext == Some("xml") => collada_models.insert(path.to_owned()),
+                Some("STL") => stl_models.insert(path.to_owned()),
+                _ => false,
+            },
         };
     }
-    assert_eq!(collada_models.len(), 24);
+    assert_eq!(collada_models.len(), 25);
     // assert_eq!(obj_models.len(), 26);
-    assert_eq!(stl_models.len(), 8);
+    assert_eq!(stl_models.len(), 9);
 
     let mesh_loader = mesh_loader::Loader::default().stl_parse_color(true);
     let mut assimp_importer = assimp::Importer::new();
@@ -47,16 +51,13 @@ fn test() {
     assimp_importer.triangulate(true);
 
     // COLLADA
-    for (i, path) in collada_models.iter().enumerate() {
+    for path in &collada_models {
         eprintln!();
-        eprintln!(
-            "parsing {:?} (i={i})",
-            path.strip_prefix(manifest_dir).unwrap()
-        );
+        eprintln!("parsing {:?}", path.strip_prefix(manifest_dir).unwrap());
         let filename = path.file_name().unwrap().to_str().unwrap();
 
         // mesh-loader
-        let ml = mesh_loader.load_collada(path).unwrap();
+        let ml = mesh_loader.load(path).unwrap();
         for (i, m) in ml.meshes.iter().enumerate() {
             eprintln!("ml.meshes[{i}]={m:?}");
         }
@@ -123,20 +124,59 @@ fn test() {
             .collect::<Vec<_>>();
 
         // TODO
-        if !matches!(i, 3 | 6 | 18 | 22) {
+        if !matches!(
+            filename,
+            "ConcavePolygon.dae" | "cameras.dae" | "lights.dae" | "teapot_instancenodes.DAE"
+        ) {
             assert_eq!(ml.faces.len(), ai_faces.len());
             // TODO
-            if !matches!(i, 0 | 2 | 4 | 7 | 8 | 12 | 13 | 20 | 23) {
+            if !matches!(
+                filename,
+                "AsXML.xml"
+                    | "COLLADA.dae"
+                    | "Cinema4D.dae"
+                    | "anims_with_full_rotations_between_keys.DAE"
+                    | "cube_UTF8BOM.dae"
+                    | "cube_emptyTags.dae"
+                    | "cube_xmlspecialchars.dae"
+                    | "duck.dae"
+                    | "sphere.dae"
+                    | "teapots.DAE"
+            ) {
                 for (ml, ai) in ml.faces.iter().copied().zip(ai_faces) {
                     assert_eq!(ml, ai);
                 }
             }
         }
         // TODO
-        if !matches!(i, 0 | 3 | 4 | 6 | 7 | 8 | 12 | 13 | 18 | 20 | 22) {
+        if !matches!(
+            filename,
+            "AsXML.xml"
+                | "COLLADA.dae"
+                | "ConcavePolygon.dae"
+                | "anims_with_full_rotations_between_keys.DAE"
+                | "cameras.dae"
+                | "cube_UTF8BOM.dae"
+                | "cube_emptyTags.dae"
+                | "cube_xmlspecialchars.dae"
+                | "duck.dae"
+                | "lights.dae"
+                | "sphere.dae"
+                | "teapot_instancenodes.DAE"
+        ) {
             assert_eq!(ml.vertices.len(), ai_vertices.len());
             // TODO
-            if !matches!(i, 2 | 5 | 10 | 11 | 15 | 16 | 19 | 23) {
+            if !matches!(
+                filename,
+                "Cinema4D.dae"
+                    | "box_nested_animation.dae"
+                    | "cube_tristrips.dae"
+                    | "cube_with_2UVs.DAE"
+                    | "earthCylindrical.DAE"
+                    | "kwxport_test_vcolors.dae"
+                    | "regr01.dae"
+                    | "teapots.DAE"
+            ) {
                 let mut first = true;
                 let mut x = 1.;
                 for (j, (ml, ai)) in ml.vertices.iter().copied().zip(ai_vertices).enumerate() {
@@ -168,16 +208,13 @@ fn test() {
     }
 
     // STL
-    for (i, path) in stl_models.iter().enumerate() {
+    for path in &stl_models {
         eprintln!();
-        eprintln!(
-            "parsing {:?} (i={i})",
-            path.strip_prefix(manifest_dir).unwrap()
-        );
+        eprintln!("parsing {:?}", path.strip_prefix(manifest_dir).unwrap());
         let filename = path.file_name().unwrap().to_str().unwrap();
 
         // mesh-loader
-        let ml = mesh_loader.load_stl(path).unwrap();
+        let ml = mesh_loader.load(path).unwrap();
         for (i, m) in ml.meshes.iter().enumerate() {
             eprintln!("ml.meshes[{i}]={m:?}");
         }

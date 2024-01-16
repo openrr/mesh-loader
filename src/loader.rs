@@ -1,6 +1,6 @@
-use std::{ffi::OsStr, fmt, fs, io, path::Path};
+use std::{cmp, ffi::OsStr, fmt, fs, io, path::Path};
 
-use crate::Scene;
+use crate::{utils::bytes::starts_with, Scene};
 
 type Reader<B> = fn(&Path) -> io::Result<B>;
 
@@ -110,29 +110,29 @@ impl<B: AsRef<[u8]>> Loader<B> {
         #[allow(unused_variables)] bytes: &[u8],
         path: &Path,
     ) -> io::Result<Scene> {
-        match path.extension().and_then(OsStr::to_str) {
+        match detect_file_type(path, bytes) {
             #[cfg(feature = "stl")]
-            Some("stl" | "STL") => self.load_stl_from_slice_(bytes, path),
+            FileType::Stl => self.load_stl_from_slice_(bytes, path),
             #[cfg(not(feature = "stl"))]
-            Some("stl" | "STL") => Err(io::Error::new(
+            FileType::Stl => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "'stl' feature of mesh-loader must be enabled to parse STL file ({path:?})",
             )),
             #[cfg(feature = "collada")]
-            Some("dae" | "DAE") => self.load_from_slice_(bytes, path),
+            FileType::Collada => self.load_collada_from_slice_(bytes, path),
             #[cfg(not(feature = "collada"))]
-            Some("dae" | "DAE") => Err(io::Error::new(
+            FileType::Collada => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "'collada' feature of mesh-loader must be enabled to parse COLLADA file ({path:?})",
             )),
             // #[cfg(feature = "obj")]
-            // Some("obj" | "OBJ") => self.load_obj_(path),
+            // FileType::Obj => self.load_obj_from_slice_(path),
             // #[cfg(not(feature = "obj"))]
-            // Some("obj" | "OBJ") => Err(io::Error::new(
+            // FileType::Obj => Err(io::Error::new(
             //     io::ErrorKind::Unsupported,
             //     "'obj' feature of mesh-loader must be enabled to parse OBJ file ({path:?})",
             // )),
-            _ => Err(io::Error::new(
+            FileType::Unknown => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "unsupported or unrecognized file type {path:?}",
             )),
@@ -202,4 +202,33 @@ impl fmt::Debug for Loader {
         d.field("stl_parse_color", &self.stl_parse_color);
         d.finish_non_exhaustive()
     }
+}
+
+enum FileType {
+    Stl,
+    Collada,
+    // Obj,
+    Unknown,
+}
+
+fn detect_file_type(path: &Path, bytes: &[u8]) -> FileType {
+    match path.extension().and_then(OsStr::to_str) {
+        Some("stl" | "STL") => return FileType::Stl,
+        Some("dae" | "DAE") => return FileType::Collada,
+        // Some("obj" | "OBJ") => return FileType::Obj,
+        _ => {}
+    }
+    // Fallback: Read first 1024 bytes to detect file type.
+    let mut s = &bytes[..cmp::min(bytes.len(), 1024)];
+    while !s.is_empty() {
+        // TODO: use phf?
+        if starts_with(s, b"solid") {
+            return FileType::Stl;
+        }
+        if starts_with(s, b"<COLLADA") {
+            return FileType::Collada;
+        }
+        s = &s[1..];
+    }
+    FileType::Unknown
 }
