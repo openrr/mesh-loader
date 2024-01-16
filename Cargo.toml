@@ -1,8 +1,8 @@
 [package]
 name = "mesh-loader"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
-rust-version = "1.61"
+rust-version = "1.60"
 license = "Apache-2.0"
 repository = "https://github.com/openrr/mesh-loader"
 keywords = ["asset", "mesh", "stl", "collada"] # TODO: "obj"
