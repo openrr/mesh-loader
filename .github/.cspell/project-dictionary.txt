@@ -1,3 +1,4 @@
+anims
 binormal
 bitangent
 brep
@@ -10,18 +11,21 @@ emin
 endfacet
 endloop
 endsolid
-mmap
 gltf
 idents
 IDREF
+instancenodes
+kwxport
 Lemire
 linestrips
 memchr
 memrchr
+mmap
 nalgebra
 NMTOKEN
 polylist
 powerset
+regr
 repr
 rustdocflags
 rustflags
@@ -35,4 +39,6 @@ texcoords
 textangent
 trifans
 tristrips
+vcolors
 vcount
+xmlspecialchars
