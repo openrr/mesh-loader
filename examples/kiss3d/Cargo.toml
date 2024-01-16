@@ -1,15 +1,15 @@
 [package]
-name = "example"
+name = "kiss3d-example"
 version = "0.0.0"
 edition = "2021"
 publish = false
 
-[dev-dependencies]
-mesh-loader = { path = ".." }
+[dependencies]
+mesh-loader = { path = "../.." }
 
 anyhow = "1"
-clap = { version = "3", features = ["derive"] }
 kiss3d = { git = "https://github.com/sebcrozet/kiss3d.git", rev = "da70cd0", features = ["vertex_index_u32"] }
+lexopt = "0.3"
 
 [lints]
 workspace = true

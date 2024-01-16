@@ -3,6 +3,8 @@
 
 assimp
 fastrand
+lexopt
+memmap
 quickcheck
 roxmltree
 walkdir

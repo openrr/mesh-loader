@@ -2,6 +2,7 @@ use std::io;
 #[cfg(feature = "stl")]
 use std::{fmt, path::Path};
 
+#[cfg(feature = "stl")]
 use crate::utils::bytes::{bytecount_naive, memrchr_naive};
 
 macro_rules! format_err {

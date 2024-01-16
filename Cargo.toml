@@ -36,6 +36,7 @@ assimp = "0.3"
 duct = "0.13"
 fastrand = "2"
 fs-err = "2"
+memmap2 = "0.9"
 quickcheck = { default-features = false, git = "https://github.com/taiki-e/quickcheck.git", branch = "dev" } # https://github.com/BurntSushi/quickcheck/pull/304 + https://github.com/BurntSushi/quickcheck/pull/282 + lower MSRV
 walkdir = "2"
 
@@ -44,7 +45,9 @@ workspace = true
 
 [workspace]
 resolver = "2"
-members = ["example"]
+members = [
+    "examples/kiss3d",
+]
 
 # This table is shared by projects under https://github.com/taiki-e.
 # It is not intended for manual editing.
