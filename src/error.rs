@@ -5,6 +5,7 @@ use std::{fmt, path::Path};
 #[cfg(feature = "stl")]
 use crate::utils::bytes::{bytecount_naive, memrchr_naive};
 
+#[cfg(feature = "collada")]
 macro_rules! format_err {
     ($msg:expr $(,)?) => {
         crate::error::invalid_data($msg)
@@ -14,6 +15,7 @@ macro_rules! format_err {
     };
 }
 
+#[cfg(feature = "collada")]
 macro_rules! bail {
     ($($tt:tt)*) => {
         return Err(format_err!($($tt)*))
