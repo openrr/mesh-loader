@@ -42,8 +42,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Install cargo-hack
         uses: taiki-e/install-action@cargo-hack
-      - run: cargo hack build --workspace --ignore-private --feature-powerset
-      - run: cargo hack build --workspace --ignore-private --feature-powerset --rust-version
+      - run: cargo hack build --workspace --no-private --feature-powerset
+      - run: cargo hack build --workspace --no-private --feature-powerset --rust-version
 
   fmt:
     runs-on: ubuntu-latest
