@@ -43,19 +43,6 @@ pub(crate) fn starts_with(mut s: &[u8], mut needle: &'static [u8]) -> bool {
 
 #[cfg(feature = "stl")]
 #[inline]
-pub(crate) const fn memchr_naive(needle: u8, mut s: &[u8]) -> Option<usize> {
-    let start = s;
-    while let Some((&b, s_next)) = s.split_first() {
-        if b == needle {
-            return Some(start.len() - s.len());
-        }
-        s = s_next;
-    }
-    None
-}
-
-#[cfg(feature = "stl")]
-#[inline]
 pub(crate) const fn memchr_naive_table(
     needle_mask: u8,
     table: &[u8; 256],
