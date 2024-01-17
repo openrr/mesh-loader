@@ -218,17 +218,25 @@ fn detect_file_type(path: &Path, bytes: &[u8]) -> FileType {
         // Some("obj" | "OBJ") => return FileType::Obj,
         _ => {}
     }
-    // Fallback: Read first 1024 bytes to detect file type.
+    // Fallback: If failed to detect file type from extension,
+    // read the first 1024 bytes to detect the file type.
+    // TODO: rewrite based on what assimp does.
     let mut s = &bytes[..cmp::min(bytes.len(), 1024)];
-    while !s.is_empty() {
-        // TODO: use phf?
-        if starts_with(s, b"solid") {
-            return FileType::Stl;
+    while let Some((&c, s_next)) = s.split_first() {
+        match c {
+            b's' => {
+                if starts_with(s, b"solid") {
+                    return FileType::Stl;
+                }
+            }
+            b'<' => {
+                if starts_with(s, b"<COLLADA") {
+                    return FileType::Collada;
+                }
+            }
+            _ => {}
         }
-        if starts_with(s, b"<COLLADA") {
-            return FileType::Collada;
-        }
-        s = &s[1..];
+        s = s_next;
     }
     FileType::Unknown
 }

@@ -7,7 +7,7 @@ use std::{io, path::Path, str};
 use self::error::ErrorKind;
 use crate::{
     utils::{
-        bytes::{memchr_naive, memchr_naive_table, starts_with},
+        bytes::{memchr_naive_table, starts_with},
         float,
     },
     Color4, Mesh, Scene, Vec3,
@@ -24,16 +24,25 @@ pub(crate) fn from_slice_internal(
     path: Option<&Path>,
     parse_color: bool,
 ) -> io::Result<Scene> {
+    let mut meshes = Vec::with_capacity(1);
     if is_ascii_stl(bytes) {
-        match read_ascii_stl(bytes) {
-            Ok(meshes) => return Ok(Scene { meshes }),
-            // If there is solid but no facet normal, even valid ASCII text may be binary STL.
-            Err(ErrorKind::Expected("facet", _, true /* meshes.is_empty */)) => {}
+        match read_ascii_stl(bytes, &mut meshes) {
+            Ok(()) => return Ok(Scene { meshes }),
+            // If there is solid but no space or line break after solid or no
+            // facet normal, even valid ASCII text may be binary STL.
+            Err(
+                ErrorKind::ExpectedSpace("solid", _)
+                | ErrorKind::ExpectedNewline("solid", _)
+                | ErrorKind::Expected("facet", _),
+            ) if meshes.is_empty() => {}
             Err(e) => return Err(e.into_io_error(bytes, path)),
         }
     }
     match read_binary_stl(bytes, parse_color) {
-        Ok(mesh) => Ok(Scene { meshes: vec![mesh] }),
+        Ok(mesh) => {
+            meshes.push(mesh);
+            Ok(Scene { meshes })
+        }
         Err(e) => Err(e.into_io_error(bytes, path)),
     }
 }
@@ -129,9 +138,8 @@ fn read_binary_header(bytes: &[u8], parse_color: bool) -> Result<BinaryHeader<'_
         let mut s = header;
         let expect = b"COLOR=";
         while s.len() >= expect.len() + 4 {
-            if starts_with(s, expect) {
+            if token(&mut s, expect) {
                 const INV_BYTE: f32 = 1.0 / 255.0;
-                s = &s[expect.len()..];
                 reverse_color = true;
                 default_color = [
                     s[0] as f32 * INV_BYTE,
@@ -156,22 +164,23 @@ fn read_binary_header(bytes: &[u8], parse_color: bool) -> Result<BinaryHeader<'_
 fn read_binary_triangles(header: BinaryHeader<'_>) -> Mesh {
     let bytes = header.triangle_bytes;
 
-    let mut mesh = Mesh::default();
-
     let chunks = bytes.chunks_exact(TRIANGLE_SIZE);
     let num_triangles = chunks.len();
     let num_vertices = num_triangles * 3;
-    // Even if we allocate capacity with reserve_exact, the compiler does not seem
-    // to be able to remove the capacity check in push/extend_from_slice, so we first
-    // allocate zeros and then copy the actual data to it.
+    // Even if we allocate capacity with reserve_exact, the compiler does not
+    // seem to be able to remove the capacity check in push/extend_from_slice,
+    // so we first allocate zeros and then copy the actual data to it.
     // If the size is relatively small, the fastest way here is to allocate Vec,
     // write to it using unsafe ways, and finally call set_len.
     // However, as the size increases, this way becomes equivalent performance
-    // (at least on x86_64 Linux & AArch64 macOS), and in some cases this way is 10%
-    // faster (at least on AArch64 macOS).
-    mesh.vertices = vec![[0., 0., 0.]; num_vertices];
-    mesh.normals = vec![[0., 0., 0.]; num_vertices];
-    mesh.faces = vec![[0, 0, 0]; num_triangles];
+    // (at least on x86_64 Linux & AArch64 macOS), and in some cases this way is
+    // finally 10% faster (at least on AArch64 macOS).
+    let mut mesh = Mesh {
+        vertices: vec![[0., 0., 0.]; num_vertices],
+        normals: vec![[0., 0., 0.]; num_vertices],
+        faces: vec![[0, 0, 0]; num_triangles],
+        ..Default::default()
+    };
 
     let mut vertices_len = 0;
     let has_color_mask = if header.parse_color { 1 << 15 } else { 0 };
@@ -252,8 +261,7 @@ endfacet
 
 endsolid name
 */
-fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
-    let mut meshes = Vec::<Mesh>::with_capacity(1);
+fn read_ascii_stl(mut s: &[u8], meshes: &mut Vec<Mesh>) -> Result<(), ErrorKind> {
     loop {
         let mut mesh = Mesh::default();
 
@@ -263,16 +271,16 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
             if s.is_empty() {
                 // eof
                 if meshes.is_empty() {
-                    return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+                    return Err(ErrorKind::Expected(expected, s.len()));
                 }
                 break;
             }
-            return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+            return Err(ErrorKind::Expected(expected, s.len()));
         }
         if !skip_spaces(&mut s) {
             return Err(ErrorKind::ExpectedSpace(expected, s.len()));
         }
-        match memchr_naive(b'\n', s) {
+        match memchr_naive_table(LINE, &TABLE, s) {
             Some(n) => {
                 let mut name = &s[..n];
                 s = &s[n + 1..];
@@ -283,7 +291,7 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
                     // > store metadata (e.g., filename, author, modification date, etc).
                     name = &name[..n];
                 }
-                let name = std::str::from_utf8(name).unwrap();
+                let name = str::from_utf8(name).unwrap();
                 Mesh::set_name(&mut mesh, name);
             }
             None => return Err(ErrorKind::ExpectedNewline(expected, s.len())),
@@ -302,7 +310,7 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
             }
             let expected = "normal";
             if !token(&mut s, expected.as_bytes()) {
-                return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+                return Err(ErrorKind::Expected(expected, s.len()));
             }
             let mut normal = [0.; 3];
             for normal in &mut normal {
@@ -326,14 +334,14 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
             // https://github.com/apache/commons-geometry/blob/fb537c8505644262f70fde6e4a0b109e06363340/commons-geometry-io-euclidean/src/test/java/org/apache/commons/geometry/io/euclidean/threed/stl/TextStlFacetDefinitionReaderTest.java#L124-L125
             let expected = "outer";
             if !skip_spaces_and_lines_until_token(&mut s, expected.as_bytes()) {
-                return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+                return Err(ErrorKind::Expected(expected, s.len()));
             }
             if !skip_spaces(&mut s) {
                 return Err(ErrorKind::ExpectedSpace(expected, s.len()));
             }
             let expected = "loop";
             if !token(&mut s, expected.as_bytes()) {
-                return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+                return Err(ErrorKind::Expected(expected, s.len()));
             }
             if !skip_spaces_until_line(&mut s) {
                 return Err(ErrorKind::ExpectedNewline(expected, s.len()));
@@ -346,7 +354,7 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
             let mut vertices = [[0.; 3]; 3];
             for vertex in &mut vertices {
                 if !skip_spaces_and_lines_until_token(&mut s, expected.as_bytes()) {
-                    return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+                    return Err(ErrorKind::Expected(expected, s.len()));
                 }
                 for vertex in vertex {
                     if !skip_spaces(&mut s) {
@@ -368,7 +376,7 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
             // endloop
             let expected = "endloop";
             if !skip_spaces_and_lines_until_token(&mut s, expected.as_bytes()) {
-                return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+                return Err(ErrorKind::Expected(expected, s.len()));
             }
             if !skip_spaces_until_line(&mut s) {
                 return Err(ErrorKind::ExpectedNewline(expected, s.len()));
@@ -377,7 +385,7 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
             // endfacet
             let expected = "endfacet";
             if !skip_spaces_and_lines_until_token(&mut s, expected.as_bytes()) {
-                return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+                return Err(ErrorKind::Expected(expected, s.len()));
             }
             if !skip_spaces_until_line(&mut s) {
                 return Err(ErrorKind::ExpectedNewline(expected, s.len()));
@@ -396,11 +404,11 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
         // endsolid [name]
         let expected = "endsolid";
         if !token(&mut s, expected.as_bytes()) {
-            return Err(ErrorKind::Expected(expected, s.len(), meshes.is_empty()));
+            return Err(ErrorKind::Expected(expected, s.len()));
         }
         // Skip checking endsolid because some exporters have generated the wrong STL about endsolid.
         // https://github.com/assimp/assimp/issues/3756
-        match memchr_naive(b'\n', s) {
+        match memchr_naive_table(LINE, &TABLE, s) {
             Some(n) => s = &s[n + 1..],
             None => s = &[],
         }
@@ -408,7 +416,7 @@ fn read_ascii_stl(mut s: &[u8]) -> Result<Vec<Mesh>, ErrorKind> {
         meshes.push(mesh);
     }
 
-    Ok(meshes)
+    Ok(())
 }
 
 const __: u8 = 0;
@@ -417,11 +425,11 @@ const __: u8 = 0;
 // https://en.wikipedia.org/wiki/STL_(file_format)#ASCII
 // > Whitespace (spaces, tabs, newlines) may be used anywhere in the file except within numbers or words.
 const WS: u8 = 1 << 0;
-// [ \r\t]
+// [ \t]
 const WS_NO_LINE: u8 = 1 << 1;
-// [\n]
+// [\r\n]
 const LINE: u8 = 1 << 2;
-const LF: u8 = WS | LINE;
+const LN: u8 = WS | LINE;
 const NL: u8 = WS | WS_NO_LINE;
 // [s]
 const S_: u8 = 1 << 3;
@@ -436,7 +444,7 @@ const V_: u8 = 1 << 7;
 
 static TABLE: [u8; 256] = [
     //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-    __, __, __, __, __, __, __, __, __, NL, LF, __, __, NL, __, __, // 0
+    __, __, __, __, __, __, __, __, __, NL, LN, __, __, LN, __, __, // 0
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 1
     NL, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 3
@@ -500,7 +508,7 @@ fn token(s: &mut &[u8], token: &'static [u8]) -> bool {
     }
 }
 
-#[inline(always)] // Ensure the code getting token_start_mask and check_start is inlined.
+#[inline(always)] // Ensure the code creating token_start_mask and check_start is inlined.
 fn skip_spaces_and_lines_until_token(s: &mut &[u8], token: &'static [u8]) -> bool {
     let token_start_mask = TABLE[token[0] as usize];
     debug_assert_ne!(token_start_mask, __);
@@ -576,7 +584,7 @@ mod error {
         // ASCII STL error
         ExpectedSpace(&'static str, usize),
         ExpectedNewline(&'static str, usize),
-        Expected(&'static str, usize, bool),
+        Expected(&'static str, usize),
         Float(usize),
         // binary STL error
         TooSmall,
@@ -590,11 +598,11 @@ mod error {
         pub(super) fn into_io_error(self, start: &[u8], path: Option<&Path>) -> io::Error {
             let remaining = match self {
                 // ASCII STL error
-                Self::Expected(.., n, _)
+                Self::Expected(.., n)
                 | Self::ExpectedNewline(.., n)
                 | Self::ExpectedSpace(.., n)
                 | Self::Float(n) => n,
-                // binary STL error (points file:1:1, as error occurs only when the header is read)
+                // binary STL error (always points file:1:1, as error occurs only during reading the header)
                 _ => start.len(),
             };
             crate::error::with_location(
@@ -625,7 +633,7 @@ mod error {
                         write!(f, "expected newline after {msg}")
                     }
                 }
-                Self::Expected(msg, remaining, _) => {
+                Self::Expected(msg, remaining) => {
                     if msg == "solid" && remaining != 0 {
                         write!(f, "expected solid or eof")
                     } else if msg == "endsolid" {
