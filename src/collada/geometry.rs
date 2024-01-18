@@ -3,7 +3,7 @@ use super::*;
 /// See [specification][spec] for details.
 ///
 /// [spec]: https://www.khronos.org/files/collada_spec_1_4.pdf#page=99
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub(super) struct LibraryGeometries {
     /// The unique identifier of this element.
     pub(super) id: Option<String>,
@@ -19,7 +19,6 @@ pub(super) struct LibraryGeometries {
 /// See [specification][spec] for details.
 ///
 /// [spec]: https://www.khronos.org/files/collada_spec_1_4.pdf#page=68
-#[derive(Debug)]
 pub(super) struct Geometry {
     /// The unique identifier of this element.
     pub(super) id: String,
@@ -30,20 +29,17 @@ pub(super) struct Geometry {
     pub(super) mesh: Mesh,
 }
 
-#[derive(Debug)]
 pub(super) struct Mesh {
     pub(super) vertices: Vertices,
     pub(super) primitives: Vec<Primitive>,
 }
 
-#[derive(Debug)]
 pub(super) struct VerticesInputs {
     pub(super) position: UnsharedInput,
     pub(super) normal: Option<UnsharedInput>,
     pub(super) texcoord: Option<UnsharedInput>,
 }
 
-#[derive(Debug)]
 pub(super) struct Vertices {
     /// The unique identifier of this element.
     pub(super) id: String,
@@ -86,7 +82,6 @@ impl PrimitiveType {
     }
 }
 
-#[derive(Debug)]
 pub(super) struct PrimitiveInputs {
     pub(super) vertex: SharedInput<Vertices>,
     pub(super) normal: Option<SharedInput>,
@@ -95,7 +90,6 @@ pub(super) struct PrimitiveInputs {
     pub(super) texcoord: Vec<SharedInput>,
 }
 
-#[derive(Debug)]
 pub(super) struct Primitive {
     /// The type of this element.
     pub(super) ty: PrimitiveType,

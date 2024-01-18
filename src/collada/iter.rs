@@ -15,7 +15,6 @@ impl ast::Document {
     }
 }
 
-#[derive(Debug)]
 pub(super) struct Meshes<'a> {
     pub(super) iter:
         iter::Enumerate<std::collections::btree_map::Values<'a, String, ast::Geometry>>,
@@ -40,7 +39,7 @@ impl ExactSizeIterator for Meshes<'_> {}
 
 impl FusedIterator for Meshes<'_> {}
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(super) struct Mesh<'a> {
     pub(super) doc: &'a ast::Document,
     pub(super) xml: &'a ast::Geometry,
@@ -55,7 +54,6 @@ impl<'a> Mesh<'a> {
     }
 }
 
-#[derive(Debug)]
 pub(super) struct Primitives<'a> {
     mesh: Mesh<'a>,
     iter: iter::Enumerate<slice::Iter<'a, ast::Primitive>>,
@@ -80,7 +78,7 @@ impl ExactSizeIterator for Primitives<'_> {}
 
 impl FusedIterator for Primitives<'_> {}
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(super) struct Primitive<'a> {
     pub(super) mesh: Mesh<'a>,
     pub(super) xml: &'a ast::Primitive,
@@ -300,7 +298,6 @@ impl<'a> Primitive<'a> {
     }
 }
 
-#[derive(Debug)]
 pub(super) struct Positions<'a>(Option<(u32, slice::Chunks<'a, f32>)>);
 
 impl Iterator for Positions<'_> {
@@ -330,10 +327,8 @@ impl FusedIterator for Positions<'_> {}
 
 pub(super) type Normals<'a> = Positions<'a>;
 
-#[derive(Debug)]
 pub(super) struct Texcoords<'a>(Option<TexcoordsInner<'a>>);
 
-#[derive(Debug)]
 struct TexcoordsInner<'a> {
     iter: slice::Chunks<'a, f32>,
 }
@@ -364,13 +359,11 @@ impl ExactSizeIterator for Texcoords<'_> {}
 
 impl FusedIterator for Texcoords<'_> {}
 
-#[derive(Debug)]
 pub(super) struct VertexIndices<'a> {
     remaining: u32,
     inner: IndicesInner<'a>,
 }
 
-#[derive(Debug)]
 enum IndicesInner<'a> {
     Polylist {
         offset: u32,
@@ -571,7 +564,7 @@ impl ExactSizeIterator for VertexIndices<'_> {}
 
 impl FusedIterator for VertexIndices<'_> {}
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub(super) enum Face {
     Point(#[allow(dead_code)] [u32; 1]),
     Line(#[allow(dead_code)] [u32; 2]),

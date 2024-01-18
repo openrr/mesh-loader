@@ -57,7 +57,6 @@ impl_get_by_uri!(Accessor, library_geometries.accessors);
 impl_get_by_uri!(ArrayData, library_geometries.array_data);
 impl_get_by_uri!(Geometry, library_geometries.geometries);
 
-#[derive(Debug)]
 struct Uri<T>(String, PhantomData<fn() -> T>);
 
 impl<T> Uri<T> {
@@ -147,7 +146,7 @@ impl<'a, 'input> ColladaXmlNodeExt<'a, 'input> for xml::Node<'a, 'input> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 struct Version {
     minor: u32,
     patch: u32,
@@ -185,7 +184,6 @@ struct Context {
     library_geometries: LibraryGeometries,
 }
 
-#[derive(Debug)]
 struct Document {
     library_geometries: LibraryGeometries,
 }
@@ -278,7 +276,6 @@ where
     }
 }
 
-#[derive(Debug)]
 struct Source {
     // Required
     id: String,
@@ -356,7 +353,6 @@ impl Source {
     }
 }
 
-#[derive(Debug)]
 struct ArrayElement {
     // Required
     id: String,
@@ -445,7 +441,6 @@ fn parse_array_element(node: xml::Node<'_, '_>) -> io::Result<ArrayElement> {
 }
 
 /// Data source array.
-#[derive(Debug)]
 enum ArrayData {
     /// <float_array>
     Float(Vec<f32>),
@@ -497,7 +492,6 @@ impl ArrayData {
     }
 }
 
-#[derive(Debug)]
 struct Accessor {
     // Required
     count: u32,
@@ -555,7 +549,6 @@ impl Accessor {
 }
 
 #[allow(dead_code)] // TODO(material)
-#[derive(Debug)]
 struct Param {
     /// The name of this element.
     name: Option<String>,
@@ -591,7 +584,6 @@ impl Param {
     }
 }
 
-#[derive(Debug)]
 struct SharedInput<T = Accessor> {
     // Required
     offset: u32,
@@ -637,7 +629,6 @@ impl<T> SharedInput<T> {
     }
 }
 
-#[derive(Debug)]
 struct UnsharedInput {
     // Required
     semantic: InputSemantic,
@@ -664,7 +655,7 @@ impl UnsharedInput {
 // refs: https://www.khronos.org/files/collada_spec_1_4.pdf#page=74
 // refs: https://www.khronos.org/files/collada_spec_1_5.pdf#page=88
 #[allow(non_camel_case_types, clippy::upper_case_acronyms)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 enum InputSemantic {
     /// Geometric binormal (bitangent) vector.
     BINORMAL,

@@ -22,7 +22,7 @@ static INT_POW10: [u64; 16] = [
     1000000000000000,
 ];
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) struct Number {
     pub(crate) exponent: i64,
     pub(crate) mantissa: u64,
