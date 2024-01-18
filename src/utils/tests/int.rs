@@ -117,6 +117,7 @@ fn uint() {
             .0,
         0
     );
+    assert_eq!(u8::parse(b"308"), None);
 }
 
 macro_rules! quickcheck_uint {
