@@ -85,7 +85,6 @@ const TRIANGLE_COUNT_SIZE: usize = 4;
 const TRIANGLE_START: usize = HEADER_SIZE + TRIANGLE_COUNT_SIZE;
 const TRIANGLE_SIZE: usize = 50;
 
-#[derive(Clone, Copy)]
 struct BinaryHeader<'a> {
     default_color: Color4,
     parse_color: bool,
@@ -95,7 +94,7 @@ struct BinaryHeader<'a> {
 
 fn read_binary_stl(bytes: &[u8], parse_color: bool) -> Result<Mesh, ErrorKind> {
     let header = read_binary_header(bytes, parse_color)?;
-    Ok(read_binary_triangles(header))
+    Ok(read_binary_triangles(&header))
 }
 
 fn read_binary_header(bytes: &[u8], parse_color: bool) -> Result<BinaryHeader<'_>, ErrorKind> {
@@ -161,7 +160,7 @@ fn read_binary_header(bytes: &[u8], parse_color: bool) -> Result<BinaryHeader<'_
     })
 }
 
-fn read_binary_triangles(header: BinaryHeader<'_>) -> Mesh {
+fn read_binary_triangles(header: &BinaryHeader<'_>) -> Mesh {
     let bytes = header.triangle_bytes;
 
     let chunks = bytes.chunks_exact(TRIANGLE_SIZE);

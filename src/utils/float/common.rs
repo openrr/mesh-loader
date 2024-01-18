@@ -63,7 +63,7 @@ pub(crate) const fn is_8digits(v: u64) -> bool {
 
 /// A custom 64-bit floating point type, representing `f * 2^e`.
 /// e is biased, so it be directly shifted into the exponent bits.
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Default)]
+#[derive(Copy, Clone, PartialEq, Eq, Default)]
 pub(crate) struct BiasedFp {
     /// The significant digits.
     pub(crate) f: u64,
