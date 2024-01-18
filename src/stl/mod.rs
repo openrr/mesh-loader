@@ -31,7 +31,8 @@ pub(crate) fn from_slice_internal(
             // If there is solid but no space or line break after solid or no
             // facet normal, even valid ASCII text may be binary STL.
             Err(
-                ErrorKind::ExpectedSpace("solid", _)
+                ErrorKind::NotAscii("solid", _)
+                | ErrorKind::ExpectedSpace("solid", _)
                 | ErrorKind::ExpectedNewline("solid", _)
                 | ErrorKind::Expected("facet", _),
             ) if meshes.is_empty() => {}
@@ -54,14 +55,16 @@ fn is_ascii_stl(mut bytes: &[u8]) -> bool {
     // Use skip_spaces_and_lines_until_token instead of starts_with here
     // because some ASCII STL files has space before solid.
     // https://grep.app/search?q=%5E%20endsolid&regexp=true&case=true
-    let mut is_ascii = skip_spaces_and_lines_until_token(&mut bytes, b"solid");
+    let is_ascii = skip_spaces_and_lines_until_token(&mut bytes, b"solid");
 
     if is_ascii {
-        // A lot of importers are write solid even if the file is binary.
-        // So we have to check for ASCII-characters.
-        if !bytes.is_ascii() {
-            is_ascii = false;
-        }
+        // This check is now performed with a delay within read_ascii_stl.
+        // See the comment on ASCII check for stings after solid for more.
+        // // A lot of importers are write solid even if the file is binary.
+        // // So we have to check for ASCII-characters.
+        // if !bytes.is_ascii() {
+        //     is_ascii = false;
+        // }
     }
     is_ascii
 }
@@ -282,7 +285,13 @@ fn read_ascii_stl(mut s: &[u8], meshes: &mut Vec<Mesh>) -> Result<(), ErrorKind>
         match memchr_naive_table(LINE, &TABLE, s) {
             Some(n) => {
                 let mut name = &s[..n];
-                s = &s[n + 1..];
+                // The only strings we need to explicitly check for ASCII are the
+                // strings after solid and endsolid. Any other occurrence of
+                // a non-ASCII character elsewhere will result in the normal syntax
+                // error of simply not finding the expected character or whitespace.
+                if !name.is_ascii() {
+                    return Err(ErrorKind::NotAscii(expected, s.len()));
+                }
                 if let Some(n) = memchr_naive_table(WS_NO_LINE, &TABLE, name) {
                     // Ignore contents after the name.
                     // https://en.wikipedia.org/wiki/STL_(file_format)#ASCII
@@ -292,6 +301,7 @@ fn read_ascii_stl(mut s: &[u8], meshes: &mut Vec<Mesh>) -> Result<(), ErrorKind>
                 }
                 let name = str::from_utf8(name).unwrap();
                 Mesh::set_name(&mut mesh, name);
+                s = &s[n + 1..];
             }
             None => return Err(ErrorKind::ExpectedNewline(expected, s.len())),
         }
@@ -408,8 +418,18 @@ fn read_ascii_stl(mut s: &[u8], meshes: &mut Vec<Mesh>) -> Result<(), ErrorKind>
         // Skip checking endsolid because some exporters have generated the wrong STL about endsolid.
         // https://github.com/assimp/assimp/issues/3756
         match memchr_naive_table(LINE, &TABLE, s) {
-            Some(n) => s = &s[n + 1..],
-            None => s = &[],
+            Some(n) => {
+                if !s[..n].is_ascii() {
+                    return Err(ErrorKind::NotAscii(expected, s.len())); // See the comment on ASCII check for stings after solid for more.
+                }
+                s = &s[n + 1..];
+            }
+            None => {
+                if !s.is_ascii() {
+                    return Err(ErrorKind::NotAscii(expected, s.len())); // See the comment on ASCII check for stings after solid for more.
+                }
+                s = &[];
+            }
         }
 
         meshes.push(mesh);
@@ -585,6 +605,7 @@ mod error {
         ExpectedNewline(&'static str, usize),
         Expected(&'static str, usize),
         Float(usize),
+        NotAscii(&'static str, usize),
         // binary STL error
         TooSmall,
         InvalidSize,
@@ -600,7 +621,8 @@ mod error {
                 Self::Expected(.., n)
                 | Self::ExpectedNewline(.., n)
                 | Self::ExpectedSpace(.., n)
-                | Self::Float(n) => n,
+                | Self::Float(n)
+                | Self::NotAscii(.., n) => n,
                 // binary STL error (always points file:1:1, as error occurs only during reading the header)
                 _ => start.len(),
             };
@@ -642,6 +664,7 @@ mod error {
                     }
                 }
                 Self::Float(..) => write!(f, "error while parsing a float"),
+                Self::NotAscii(..) => write!(f, "invalid ASCII"),
                 // binary STL error
                 Self::TooSmall => write!(
                     f,
