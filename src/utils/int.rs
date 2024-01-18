@@ -21,6 +21,7 @@ mod integer {
     pub trait RawInteger: Copy {
         const MAX_DIGITS: usize;
         const MIN_SAFE: u64;
+        const MAX: u64;
         const IS_SIGNED: bool;
         fn from_u64(v: u64, negative: bool) -> Self;
     }
@@ -59,6 +60,7 @@ macro_rules! uint {
         impl RawInteger for $ty {
             const MAX_DIGITS: usize = max_digit_count!($ty);
             const MIN_SAFE: u64 = (BASE as u64).pow($ty::MAX_DIGITS as u32 - 1);
+            const MAX: u64 = $ty::MAX as u64;
             const IS_SIGNED: bool = false;
             #[inline]
             fn from_u64(v: u64, negative: bool) -> Self {
@@ -74,6 +76,7 @@ macro_rules! int {
         impl RawInteger for $ty {
             const MAX_DIGITS: usize = max_digit_count!($ty);
             const MIN_SAFE: u64 = (BASE as u64).pow($ty::MAX_DIGITS as u32 - 1);
+            const MAX: u64 = $ty::MAX as u64;
             const IS_SIGNED: bool = true;
             #[inline]
             fn from_u64(v: u64, negative: bool) -> Self {
@@ -125,7 +128,7 @@ fn dec2int<I: RawInteger>(mut s: &[u8]) -> Option<(I, usize)> {
         }
     }
 
-    let (v, len) = parse_partial_number(s, start, I::MAX_DIGITS, I::MIN_SAFE)?;
+    let (v, len) = parse_partial_number(s, start, negative, I::MAX_DIGITS, I::MIN_SAFE, I::MAX)?;
     Some((I::from_u64(v, negative), len))
 }
 
@@ -133,8 +136,10 @@ fn dec2int<I: RawInteger>(mut s: &[u8]) -> Option<(I, usize)> {
 fn parse_partial_number(
     mut s: &[u8],
     full_start: &[u8],
+    negative: bool,
     max_digits: usize,
     min_safe: u64,
+    max: u64,
 ) -> Option<(u64, usize)> {
     debug_assert!(!s.is_empty());
 
@@ -167,6 +172,9 @@ fn parse_partial_number(
         return None;
     }
     if n_digits == max_digits && v < min_safe {
+        return None;
+    }
+    if max != u64::MAX && v > max + negative as u64 {
         return None;
     }
 
