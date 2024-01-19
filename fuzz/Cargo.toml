@@ -1,0 +1,29 @@
+[package]
+name = "fuzz"
+edition = "2021"
+
+[package.metadata]
+cargo-fuzz = true
+
+[features]
+libfuzzer = ["libfuzzer-sys"]
+
+[dependencies]
+mesh-loader = { path = ".." }
+
+libfuzzer-sys = { version = "0.4", optional = true }
+afl = { version = "0.15", optional = true }
+
+[[bin]]
+name = "stl"
+path = "stl.rs"
+test = false
+doc = false
+
+[workspace]
+resolver = "2"
+
+[profile.release]
+debug = true
+debug-assertions = true
+overflow-checks = true
