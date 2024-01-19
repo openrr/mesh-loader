@@ -4,6 +4,7 @@
 assimp
 fastrand
 lexopt
+libfuzzer
 memmap
 quickcheck
 roxmltree
