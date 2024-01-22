@@ -15,6 +15,18 @@ libfuzzer-sys = { version = "0.4", optional = true }
 afl = { version = "0.15", optional = true }
 
 [[bin]]
+name = "mtl"
+path = "mtl.rs"
+test = false
+doc = false
+
+[[bin]]
+name = "obj"
+path = "obj.rs"
+test = false
+doc = false
+
+[[bin]]
 name = "stl"
 path = "stl.rs"
 test = false

@@ -13,14 +13,18 @@ use std::{
 
 use self::geometry::*;
 use crate::{
-    utils::xml::{self, XmlNodeExt},
+    utils::{
+        utf16::decode_string,
+        xml::{self, XmlNodeExt},
+    },
     Scene,
 };
 
 /// Parses meshes from bytes of COLLADA text.
 #[inline]
 pub fn from_slice(bytes: &[u8]) -> io::Result<Scene> {
-    from_str(str::from_utf8(bytes).map_err(crate::error::invalid_data)?)
+    let bytes = &decode_string(bytes)?;
+    from_str(bytes)
 }
 
 /// Parses meshes from a string of COLLADA text.
@@ -28,9 +32,11 @@ pub fn from_slice(bytes: &[u8]) -> io::Result<Scene> {
 pub fn from_str(s: &str) -> io::Result<Scene> {
     let xml = xml::Document::parse(s).map_err(crate::error::invalid_data)?;
     let collada = Document::parse(&xml)?;
-    Ok(Scene {
-        meshes: instance::build_meshes(&collada),
-    })
+    let meshes = instance::build_meshes(&collada);
+    let materials = (0..meshes.len())
+        .map(|_| crate::Material::default())
+        .collect(); // TODO
+    Ok(Scene { materials, meshes })
 }
 
 // Inspired by gltf-json's `Get` trait.

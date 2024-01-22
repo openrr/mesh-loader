@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, path::PathBuf};
 
 pub(crate) type Vec2 = [f32; 2];
 pub(crate) type Vec3 = [f32; 3];
@@ -13,6 +13,7 @@ pub(crate) const MAX_NUMBER_OF_COLOR_SETS: usize = 2;
 #[derive(Debug, Default)]
 #[non_exhaustive]
 pub struct Scene {
+    pub materials: Vec<Material>,
     pub meshes: Vec<Mesh>,
 }
 
@@ -26,6 +27,8 @@ pub struct Mesh {
     pub normals: Vec<Vec3>,
     pub faces: Vec<Face>,
     pub colors: [Vec<Color4>; MAX_NUMBER_OF_COLOR_SETS],
+    #[cfg(feature = "obj")]
+    pub(crate) material_index: u32,
 }
 
 impl Mesh {
@@ -75,6 +78,8 @@ impl Mesh {
             normals,
             faces,
             colors: [colors0, colors1],
+            #[cfg(feature = "obj")]
+            material_index: u32::MAX,
         }
     }
 }
@@ -90,6 +95,33 @@ impl fmt::Debug for Mesh {
             .field("num_faces", &self.faces.len())
             .field("num_colors0", &self.colors[0].len())
             .field("num_colors1", &self.colors[1].len())
-            .finish()
+            .finish_non_exhaustive()
     }
+}
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct Material {
+    pub name: String,
+    pub color: Colors,
+    pub texture: Textures,
+}
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct Colors {
+    pub ambient: Option<Color4>,
+    pub diffuse: Option<Color4>,
+    pub specular: Option<Color4>,
+    pub emissive: Option<Color4>,
+}
+
+#[derive(Debug, Clone, Default)]
+#[non_exhaustive]
+pub struct Textures {
+    pub ambient: Option<PathBuf>,
+    pub diffuse: Option<PathBuf>,
+    pub specular: Option<PathBuf>,
+    pub emissive: Option<PathBuf>,
+    pub normal: Option<PathBuf>,
 }

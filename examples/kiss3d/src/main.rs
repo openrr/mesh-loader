@@ -77,38 +77,42 @@ fn main() -> Result<()> {
 }
 
 fn add_mesh(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> Result<SceneNode> {
-    let loader = mesh_loader::Loader::default().merge_meshes(true);
-    let mut scene = loader.load(path)?;
-    assert_eq!(scene.meshes.len(), 1); // merge_meshes guarantees this.
-    let mesh = scene.meshes.pop().unwrap();
-    eprintln!("mesh={mesh:?}");
-    let coords = mesh.vertices.into_iter().map(Into::into).collect();
-    let faces = mesh
-        .faces
-        .into_iter()
-        .map(|f| na::Point3::new(f[0], f[1], f[2]))
-        .collect();
-    let normals = if mesh.normals.is_empty() {
-        None
-    } else {
-        Some(mesh.normals.into_iter().map(Into::into).collect())
-    };
-    let uvs = if mesh.texcoords[0].is_empty() {
-        None
-    } else {
-        Some(mesh.texcoords[0].iter().copied().map(Into::into).collect())
-    };
-    let kiss3d_mesh = Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
-        coords, faces, normals, uvs, false,
-    )));
-    let kiss3d_scene = window.add_mesh(kiss3d_mesh, scale);
-    // TODO(material)
-    // if let Some(color) = material.diffuse_color() {
-    //     kiss3d_scene.set_color(color[0], color[1], color[2]);
-    // }
-    // if let Some(path) = materials.get(0) {
-    //     kiss3d_scene.set_texture_from_file(path, path.to_str().unwrap());
-    // }
-
-    Ok(kiss3d_scene)
+    let mut base = window.add_group();
+    let loader = mesh_loader::Loader::default();
+    let scene = loader.load(path)?;
+    assert_eq!(scene.meshes.len(), scene.materials.len());
+    for (mesh, material) in scene.meshes.into_iter().zip(scene.materials) {
+        eprintln!("mesh={mesh:?}");
+        eprintln!("material={material:?}");
+        let coords = mesh.vertices.into_iter().map(Into::into).collect();
+        let faces = mesh
+            .faces
+            .into_iter()
+            .map(|f| na::Point3::new(f[0], f[1], f[2]))
+            .collect();
+        let normals = if mesh.normals.is_empty() {
+            None
+        } else {
+            Some(mesh.normals.into_iter().map(Into::into).collect())
+        };
+        let uvs = if mesh.texcoords[0].is_empty() {
+            None
+        } else {
+            Some(mesh.texcoords[0].iter().copied().map(Into::into).collect())
+        };
+        let kiss3d_mesh = Rc::new(RefCell::new(kiss3d::resource::Mesh::new(
+            coords, faces, normals, uvs, false,
+        )));
+        let mut kiss3d_scene = base.add_mesh(kiss3d_mesh, scale);
+        if let Some(color) = material.color.diffuse {
+            kiss3d_scene.set_color(color[0], color[1], color[2]);
+        }
+        if let Some(path) = &material.texture.diffuse {
+            kiss3d_scene.set_texture_from_file(path, path.to_str().unwrap());
+        }
+        if let Some(path) = &material.texture.ambient {
+            kiss3d_scene.set_texture_from_file(path, path.to_str().unwrap());
+        }
+    }
+    Ok(base)
 }

@@ -10,7 +10,7 @@ use crate::{
         bytes::{memchr_naive_table, starts_with},
         float,
     },
-    Color4, Mesh, Scene, Vec3,
+    Color4, Material, Mesh, Scene, Vec3,
 };
 
 /// Parses meshes from bytes of binary or ASCII STL.
@@ -27,7 +27,10 @@ pub(crate) fn from_slice_internal(
     let mut meshes = Vec::with_capacity(1);
     if is_ascii_stl(bytes) {
         match read_ascii_stl(bytes, &mut meshes) {
-            Ok(()) => return Ok(Scene { meshes }),
+            Ok(()) => {
+                let materials = (0..meshes.len()).map(|_| Material::default()).collect();
+                return Ok(Scene { materials, meshes });
+            }
             // If there is solid but no space or line break after solid or no
             // facet normal, even valid ASCII text may be binary STL.
             Err(
@@ -39,10 +42,20 @@ pub(crate) fn from_slice_internal(
             Err(e) => return Err(e.into_io_error(bytes, path)),
         }
     }
-    match read_binary_stl(bytes, parse_color) {
-        Ok(mesh) => {
+    match read_binary_header(bytes, parse_color) {
+        Ok(header) => {
+            let mesh = read_binary_triangles(&header);
+            let mut material = Material::default();
+            if header.reverse_color && mesh.colors[0].is_empty() {
+                let color = header.default_color;
+                material.color.diffuse = Some(color);
+                material.color.specular = Some(color);
+            }
             meshes.push(mesh);
-            Ok(Scene { meshes })
+            Ok(Scene {
+                materials: vec![material],
+                meshes,
+            })
         }
         Err(e) => Err(e.into_io_error(bytes, path)),
     }
@@ -93,11 +106,6 @@ struct BinaryHeader<'a> {
     parse_color: bool,
     reverse_color: bool,
     triangle_bytes: &'a [u8],
-}
-
-fn read_binary_stl(bytes: &[u8], parse_color: bool) -> Result<Mesh, ErrorKind> {
-    let header = read_binary_header(bytes, parse_color)?;
-    Ok(read_binary_triangles(&header))
 }
 
 fn read_binary_header(bytes: &[u8], parse_color: bool) -> Result<BinaryHeader<'_>, ErrorKind> {
@@ -292,7 +300,7 @@ fn read_ascii_stl(mut s: &[u8], meshes: &mut Vec<Mesh>) -> Result<(), ErrorKind>
                 if !name.is_ascii() {
                     return Err(ErrorKind::NotAscii(expected, s.len()));
                 }
-                if let Some(n) = memchr_naive_table(WS_NO_LINE, &TABLE, name) {
+                if let Some(n) = memchr_naive_table(SPACE, &TABLE, name) {
                     // Ignore contents after the name.
                     // https://en.wikipedia.org/wiki/STL_(file_format)#ASCII
                     // > The remainder of the line is ignored and is sometimes used to
@@ -443,23 +451,23 @@ const __: u8 = 0;
 // Note: Unlike is_ascii_whitespace, FORM FEED ('\x0C') is not included.
 // https://en.wikipedia.org/wiki/STL_(file_format)#ASCII
 // > Whitespace (spaces, tabs, newlines) may be used anywhere in the file except within numbers or words.
-const WS: u8 = 1 << 0;
+const WS: u8 = SPACE | LINE;
 // [ \t]
-const WS_NO_LINE: u8 = 1 << 1;
+const SPACE: u8 = 1 << 0;
 // [\r\n]
-const LINE: u8 = 1 << 2;
-const LN: u8 = WS | LINE;
-const NL: u8 = WS | WS_NO_LINE;
+const LINE: u8 = 1 << 1;
+const LN: u8 = LINE;
+const NL: u8 = SPACE;
 // [s]
-const S_: u8 = 1 << 3;
+const S_: u8 = 1 << 2;
 // [e]
-const E_: u8 = 1 << 4;
+const E_: u8 = 1 << 3;
 // [f]
-const F_: u8 = 1 << 5;
+const F_: u8 = 1 << 4;
 // [o]
-const O_: u8 = 1 << 6;
+const O_: u8 = 1 << 5;
 // [v]
-const V_: u8 = 1 << 7;
+const V_: u8 = 1 << 6;
 
 static TABLE: [u8; 256] = [
     //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
@@ -500,7 +508,7 @@ fn skip_whitespace_until_byte(s: &mut &[u8], byte_mask: u8, whitespace_mask: u8)
 
 #[inline]
 fn skip_spaces_until_line(s: &mut &[u8]) -> bool {
-    skip_whitespace_until_byte(s, LINE, WS_NO_LINE)
+    skip_whitespace_until_byte(s, LINE, SPACE)
 }
 
 #[inline]
@@ -508,7 +516,7 @@ fn skip_spaces(s: &mut &[u8]) -> bool {
     let start = *s;
     while let Some((&b, s_next)) = s.split_first() {
         let b = TABLE[b as usize];
-        if b & WS_NO_LINE != 0 {
+        if b & SPACE != 0 {
             *s = s_next;
             continue;
         }

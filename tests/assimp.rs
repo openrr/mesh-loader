@@ -1,3 +1,7 @@
+#![allow(
+    clippy::match_same_arms, // https://github.com/rust-lang/rust-clippy/issues/12044
+)]
+
 use std::{
     collections::BTreeSet,
     ffi::OsStr,
@@ -19,19 +23,13 @@ fn test() {
     let models = &download_dir.join("assimp/assimp/test/models");
 
     let mut collada_models = BTreeSet::new();
-    // let mut obj_models = BTreeSet::new();
+    let mut obj_models = BTreeSet::new();
     let mut stl_models = BTreeSet::new();
     for e in WalkDir::new(models).into_iter().filter_map(Result::ok) {
         let path = e.path();
-        if let Some(filename) = path.file_name().and_then(OsStr::to_str) {
-            if filename.contains("UTF16") {
-                // Skip non-UTF-8 text files.
-                continue;
-            }
-        }
         match path.extension().and_then(OsStr::to_str) {
             Some("dae" | "DAE") => collada_models.insert(path.to_owned()),
-            // Some("obj" | "OBJ") => obj_models.insert(path.to_owned()),
+            Some("obj" | "OBJ") => obj_models.insert(path.to_owned()),
             Some("stl" | "STL") => stl_models.insert(path.to_owned()),
             ext => match path.parent().unwrap().file_stem().and_then(OsStr::to_str) {
                 Some("Collada") if ext == Some("xml") => collada_models.insert(path.to_owned()),
@@ -40,8 +38,8 @@ fn test() {
             },
         };
     }
-    assert_eq!(collada_models.len(), 25);
-    // assert_eq!(obj_models.len(), 26);
+    assert_eq!(collada_models.len(), 26);
+    assert_eq!(obj_models.len(), 26);
     assert_eq!(stl_models.len(), 9);
 
     let mesh_loader = mesh_loader::Loader::default().stl_parse_color(true);
@@ -63,6 +61,7 @@ fn test() {
         }
         let ml = mesh_loader::Mesh::merge(ml.meshes);
         eprintln!("merge(ml.meshes)={ml:?}");
+        // assert_ne!(ml.vertices.len(), 0);
         assert_eq!(ml.vertices.len(), ml.faces.len() * 3);
         if ml.normals.is_empty() {
             assert_eq!(ml.normals.capacity(), 0);
@@ -89,7 +88,7 @@ fn test() {
             // assimp parse error: Cannot parse string \"  0.0 0.0 0.0 1.0  \" as a real number: does not start with digit or decimal point followed by digit.
             "library_animation_clips.dae" => continue,
             // assimp error: "Collada: File came out empty. Something is wrong here."
-            "cube_tristrips.dae" if option_env!("CI").is_some() => continue,
+            "cube_tristrips.dae" | "cube_UTF16LE.dae" if option_env!("CI").is_some() => continue,
             _ => {}
         }
         let ai = assimp_importer.read_file(path.to_str().unwrap()).unwrap();
@@ -133,11 +132,12 @@ fn test() {
             if !matches!(
                 filename,
                 "AsXML.xml"
-                    | "COLLADA.dae"
-                    | "Cinema4D.dae"
                     | "anims_with_full_rotations_between_keys.DAE"
-                    | "cube_UTF8BOM.dae"
+                    | "Cinema4D.dae"
+                    | "COLLADA.dae"
                     | "cube_emptyTags.dae"
+                    | "cube_UTF16LE.dae"
+                    | "cube_UTF8BOM.dae"
                     | "cube_xmlspecialchars.dae"
                     | "duck.dae"
                     | "sphere.dae"
@@ -152,12 +152,13 @@ fn test() {
         if !matches!(
             filename,
             "AsXML.xml"
-                | "COLLADA.dae"
-                | "ConcavePolygon.dae"
                 | "anims_with_full_rotations_between_keys.DAE"
                 | "cameras.dae"
-                | "cube_UTF8BOM.dae"
+                | "COLLADA.dae"
+                | "ConcavePolygon.dae"
                 | "cube_emptyTags.dae"
+                | "cube_UTF16LE.dae"
+                | "cube_UTF8BOM.dae"
                 | "cube_xmlspecialchars.dae"
                 | "duck.dae"
                 | "lights.dae"
@@ -168,8 +169,8 @@ fn test() {
             // TODO
             if !matches!(
                 filename,
-                "Cinema4D.dae"
-                    | "box_nested_animation.dae"
+                "box_nested_animation.dae"
+                    | "Cinema4D.dae"
                     | "cube_tristrips.dae"
                     | "cube_with_2UVs.DAE"
                     | "earthCylindrical.DAE"
@@ -207,6 +208,189 @@ fn test() {
         }
     }
 
+    // OBJ
+    for path in &obj_models {
+        eprintln!();
+        eprintln!("parsing {:?}", path.strip_prefix(manifest_dir).unwrap());
+        let filename = path.file_name().unwrap().to_str().unwrap();
+        match filename {
+            // no mesh
+            "point_cloud.obj"
+            // no face
+            | "testline.obj" | "testpoints.obj"
+             => continue,
+            _ => {}
+        }
+
+        // mesh-loader
+        match filename {
+            // number parsing issue
+            "number_formats.obj"
+            // TODO: should not be allowed
+            | "empty.obj" | "malformed2.obj" => continue,
+            _ => {}
+        }
+        if path.parent().unwrap().file_name().unwrap() == "invalid" {
+            let _e = mesh_loader.load(path).unwrap_err();
+            let _e = assimp_importer
+                .read_file(path.to_str().unwrap())
+                .map(drop)
+                .unwrap_err();
+            continue;
+        }
+        let ml = mesh_loader.load(path).unwrap();
+        for (i, m) in ml.meshes.iter().enumerate() {
+            eprintln!("ml.meshes[{i}]={m:?}");
+        }
+        let ml = mesh_loader::Mesh::merge(ml.meshes);
+        eprintln!("merge(ml.meshes)={ml:?}");
+        assert_ne!(ml.vertices.len(), 0);
+        assert_eq!(ml.vertices.len(), ml.faces.len() * 3);
+        if ml.normals.is_empty() {
+            // assert_eq!(ml.normals.capacity(), 0);
+        } else {
+            assert_eq!(ml.vertices.len(), ml.normals.len());
+        }
+        for texcoords in &ml.texcoords {
+            if texcoords.is_empty() {
+                assert_eq!(texcoords.capacity(), 0);
+            } else {
+                assert_eq!(ml.vertices.len(), texcoords.len());
+            }
+        }
+        for colors in &ml.colors {
+            if colors.is_empty() {
+                assert_eq!(colors.capacity(), 0);
+            } else {
+                assert_eq!(ml.vertices.len(), colors.len());
+            }
+        }
+
+        // assimp
+        match filename {
+            // segmentation fault...
+            "box.obj"
+            | "box_longline.obj"
+            | "box_mat_with_spaces.obj"
+            | "box_without_lineending.obj"
+            | "multiple_spaces.obj"
+            | "only_a_part_of_vertexcolors.obj"
+            | "regr_3429812.obj"
+            | "regr01.obj"
+            | "testmixed.obj" => continue,
+            // no mesh...
+            "box_UTF16BE.obj" => continue,
+            // less number of faces loaded...
+            "cube_with_vertexcolors.obj" | "cube_with_vertexcolors_uni.obj"
+                if option_env!("CI").is_some() =>
+            {
+                continue
+            }
+            _ => {}
+        }
+        let ai = assimp_importer.read_file(path.to_str().unwrap()).unwrap();
+        // assert_eq!(ai.num_meshes, 1);
+        // assert_eq!(ai.num_meshes, ai.num_materials);
+        let ai = ai.mesh(0).unwrap();
+        // assert_eq!(ai.num_vertices, ai.num_faces * 3);
+        assert_eq!(ai.num_vertices as usize, ai.vertex_iter().count());
+        assert_eq!(ai.num_vertices as usize, ai.normal_iter().count());
+        if ai.has_texture_coords(0) {
+            assert_eq!(ai.num_vertices as usize, ai.texture_coords_iter(0).count());
+        }
+        if ai.has_vertex_colors(0) {
+            assert_eq!(ai.num_vertices as usize, ai.vertex_color_iter(0).count());
+        }
+        assert!(!ai.has_texture_coords(1));
+
+        // TODO
+        if !matches!(
+            filename,
+            "concave_polygon.obj" | "space_in_material_name.obj" | "spider.obj" | "cube_usemtl.obj"
+        ) {
+            assert_eq!(ml.faces.len(), ai.num_faces as usize);
+            for (ml, ai) in ml
+                .faces
+                .iter()
+                .copied()
+                .zip(ai.face_iter().map(|f| [f[0], f[1], f[2]]))
+            {
+                assert_eq!(ml, ai);
+            }
+        }
+        if !matches!(
+            filename,
+            "concave_polygon.obj" | "space_in_material_name.obj" | "spider.obj" | "cube_usemtl.obj"
+        ) {
+            assert_eq!(ml.vertices.len(), ai.num_vertices as usize);
+            assert_eq!(ml.normals.len(), ai.num_vertices as usize);
+            if !matches!(filename, "cube_usemtl.obj") {
+                for (j, (ml, ai)) in ml
+                    .vertices
+                    .iter()
+                    .copied()
+                    .zip(ai.vertex_iter().map(|f| [f.x, f.y, f.z]))
+                    .enumerate()
+                {
+                    let eps = f32::EPSILON * 10.;
+                    for i in 0..ml.len() {
+                        let (a, b) = (ml[i], ai[i]);
+                        assert!(
+                            (a - b).abs() < eps,
+                            "assertion failed: `(left !== right)` \
+                            (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
+                            real diff: `{:?}`) at vertices[{j}][{i}]",
+                            (a - b).abs()
+                        );
+                    }
+                }
+                for (j, (ml, ai)) in ml
+                    .normals
+                    .iter()
+                    .copied()
+                    .zip(ai.normal_iter().map(|f| [f.x, f.y, f.z]))
+                    .enumerate()
+                {
+                    let eps = f32::EPSILON;
+                    for i in 0..ml.len() {
+                        let (a, b) = (ml[i], ai[i]);
+                        assert!(
+                            (a - b).abs() < eps,
+                            "assertion failed: `(left !== right)` \
+                            (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
+                            real diff: `{:?}`) at normals[{j}][{i}]",
+                            (a - b).abs()
+                        );
+                    }
+                }
+            }
+            if ai.has_vertex_colors(0) {
+                assert_eq!(ml.colors[0].len(), ai.num_vertices as usize);
+                for (j, (ml, ai)) in ml.colors[0]
+                    .iter()
+                    .copied()
+                    .zip(ai.vertex_color_iter(0).map(|f| [f.r, f.g, f.b, f.a]))
+                    .enumerate()
+                {
+                    let eps = f32::EPSILON;
+                    for i in 0..ml.len() {
+                        let (a, b) = (ml[i], ai[i]);
+                        assert!(
+                            (a - b).abs() < eps,
+                            "assertion failed: `(left !== right)` \
+                            (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
+                            real diff: `{:?}`) at colors[0][{j}][{i}]",
+                            (a - b).abs()
+                        );
+                        assert!(a >= 0. && a <= 100.);
+                    }
+                }
+            } else {
+                assert_eq!(ml.colors[0].len(), 0);
+            }
+        }
+    }
+
     // STL
     for path in &stl_models {
         eprintln!();
@@ -220,6 +404,7 @@ fn test() {
         }
         let ml = mesh_loader::Mesh::merge(ml.meshes);
         eprintln!("merge(ml.meshes)={ml:?}");
+        assert_ne!(ml.vertices.len(), 0);
         assert_eq!(ml.vertices.len(), ml.faces.len() * 3);
         assert_eq!(ml.vertices.len(), ml.normals.len());
         for texcoords in &ml.texcoords {
@@ -319,8 +504,8 @@ fn test() {
                     assert!(
                         (a - b).abs() < eps,
                         "assertion failed: `(left !== right)` \
-                (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, real diff: `{:?}`) \
-                at normals[{j}][{i}]",
+                        (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
+                        real diff: `{:?}`) at colors[0][{j}][{i}]",
                         (a - b).abs()
                     );
                     assert!(a >= 0. && a <= 100.);

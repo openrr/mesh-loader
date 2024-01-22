@@ -4,7 +4,7 @@ use std::{
     slice,
 };
 
-use crate::{collada as ast, Vec3};
+use crate::{collada as ast, Vec2, Vec3};
 
 impl ast::Document {
     pub(super) fn meshes(&self) -> Meshes<'_> {
@@ -334,7 +334,7 @@ struct TexcoordsInner<'a> {
 }
 
 impl Iterator for Texcoords<'_> {
-    type Item = [f32; 2];
+    type Item = Vec2;
 
     fn next(&mut self) -> Option<Self::Item> {
         let inner = self.0.as_mut()?;
