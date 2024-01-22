@@ -97,41 +97,48 @@ impl<B: AsRef<[u8]>> Loader<B> {
     }
 
     pub fn load<P: AsRef<Path>>(&self, path: P) -> io::Result<Scene> {
-        self.load_(path.as_ref())
+        self.load_with_reader(path.as_ref(), self.reader)
     }
-    fn load_(&self, path: &Path) -> io::Result<Scene> {
-        self.load_from_slice_((self.reader)(path)?.as_ref(), path.as_ref())
+    pub fn load_with_reader<P: AsRef<Path>, F: FnMut(&Path) -> io::Result<B>>(
+        &self,
+        path: P,
+        mut reader: F,
+    ) -> io::Result<Scene> {
+        let path = path.as_ref();
+        self.load_from_slice_with_reader(reader(path)?.as_ref(), path, reader)
     }
     pub fn load_from_slice<P: AsRef<Path>>(&self, bytes: &[u8], path: P) -> io::Result<Scene> {
-        self.load_from_slice_(bytes, path.as_ref())
+        self.load_from_slice_with_reader(bytes, path.as_ref(), self.reader)
     }
-    fn load_from_slice_(
+    pub fn load_from_slice_with_reader<P: AsRef<Path>, F: FnMut(&Path) -> io::Result<B>>(
         &self,
         #[allow(unused_variables)] bytes: &[u8],
-        path: &Path,
+        path: P,
+        #[allow(unused_variables)] reader: F,
     ) -> io::Result<Scene> {
+        let path = path.as_ref();
         match detect_file_type(path, bytes) {
             #[cfg(feature = "stl")]
-            FileType::Stl => self.load_stl_from_slice_(bytes, path),
+            FileType::Stl => self.load_stl_from_slice(bytes, path),
             #[cfg(not(feature = "stl"))]
             FileType::Stl => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "'stl' feature of mesh-loader must be enabled to parse STL file ({path:?})",
             )),
             #[cfg(feature = "collada")]
-            FileType::Collada => self.load_collada_from_slice_(bytes, path),
+            FileType::Collada => self.load_collada_from_slice(bytes, path),
             #[cfg(not(feature = "collada"))]
             FileType::Collada => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "'collada' feature of mesh-loader must be enabled to parse COLLADA file ({path:?})",
             )),
-            // #[cfg(feature = "obj")]
-            // FileType::Obj => self.load_obj_from_slice_(path),
-            // #[cfg(not(feature = "obj"))]
-            // FileType::Obj => Err(io::Error::new(
-            //     io::ErrorKind::Unsupported,
-            //     "'obj' feature of mesh-loader must be enabled to parse OBJ file ({path:?})",
-            // )),
+            #[cfg(feature = "obj")]
+            FileType::Obj => self.load_obj_from_slice_with_reader(bytes, path, reader),
+            #[cfg(not(feature = "obj"))]
+            FileType::Obj => Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "'obj' feature of mesh-loader must be enabled to parse OBJ file ({path:?})",
+            )),
             FileType::Unknown => Err(io::Error::new(
                 io::ErrorKind::Unsupported,
                 "unsupported or unrecognized file type {path:?}",
@@ -141,19 +148,13 @@ impl<B: AsRef<[u8]>> Loader<B> {
 
     #[cfg(feature = "stl")]
     pub fn load_stl<P: AsRef<Path>>(&self, path: P) -> io::Result<Scene> {
-        self.load_stl_(path.as_ref())
-    }
-    #[cfg(feature = "stl")]
-    fn load_stl_(&self, path: &Path) -> io::Result<Scene> {
-        self.load_stl_from_slice_((self.reader)(path)?.as_ref(), path)
+        let path = path.as_ref();
+        self.load_stl_from_slice((self.reader)(path)?.as_ref(), path)
     }
     #[cfg(feature = "stl")]
     pub fn load_stl_from_slice<P: AsRef<Path>>(&self, bytes: &[u8], path: P) -> io::Result<Scene> {
-        self.load_stl_from_slice_(bytes, path.as_ref())
-    }
-    #[cfg(feature = "stl")]
-    fn load_stl_from_slice_(&self, bytes: &[u8], path: &Path) -> io::Result<Scene> {
-        let scene = crate::stl::from_slice_internal(bytes, Some(path), self.stl_parse_color)?;
+        let scene =
+            crate::stl::from_slice_internal(bytes, Some(path.as_ref()), self.stl_parse_color)?;
         Ok(self.post_process(scene))
     }
     #[cfg(feature = "stl")]
@@ -165,30 +166,53 @@ impl<B: AsRef<[u8]>> Loader<B> {
 
     #[cfg(feature = "collada")]
     pub fn load_collada<P: AsRef<Path>>(&self, path: P) -> io::Result<Scene> {
-        self.load_collada_(path.as_ref())
-    }
-    #[cfg(feature = "collada")]
-    fn load_collada_(&self, path: &Path) -> io::Result<Scene> {
-        self.load_collada_from_slice_((self.reader)(path)?.as_ref(), path)
+        let path = path.as_ref();
+        self.load_collada_from_slice((self.reader)(path)?.as_ref(), path)
     }
     #[cfg(feature = "collada")]
     pub fn load_collada_from_slice<P: AsRef<Path>>(
         &self,
         bytes: &[u8],
-        path: P,
+        _path: P,
     ) -> io::Result<Scene> {
-        self.load_collada_from_slice_(bytes, path.as_ref())
-    }
-    #[cfg(feature = "collada")]
-    fn load_collada_from_slice_(&self, bytes: &[u8], _path: &Path) -> io::Result<Scene> {
         let scene = crate::collada::from_slice(bytes)?;
         Ok(self.post_process(scene))
     }
 
-    #[cfg(any(feature = "collada", feature = "stl"))]
+    #[cfg(feature = "obj")]
+    pub fn load_obj<P: AsRef<Path>>(&self, path: P) -> io::Result<Scene> {
+        self.load_obj_with_reader(path.as_ref(), self.reader)
+    }
+    #[cfg(feature = "obj")]
+    pub fn load_obj_from_slice<P: AsRef<Path>>(&self, bytes: &[u8], path: P) -> io::Result<Scene> {
+        self.load_obj_from_slice_with_reader(bytes, path.as_ref(), self.reader)
+    }
+    #[cfg(feature = "obj")]
+    pub fn load_obj_with_reader<P: AsRef<Path>, F: FnMut(&Path) -> io::Result<B>>(
+        &self,
+        path: P,
+        mut reader: F,
+    ) -> io::Result<Scene> {
+        let path = path.as_ref();
+        self.load_obj_from_slice_with_reader(reader(path)?.as_ref(), path, reader)
+    }
+    #[cfg(feature = "obj")]
+    pub fn load_obj_from_slice_with_reader<P: AsRef<Path>, F: FnMut(&Path) -> io::Result<B>>(
+        &self,
+        bytes: &[u8],
+        path: P,
+        reader: F,
+    ) -> io::Result<Scene> {
+        let scene = crate::obj::from_slice(bytes, Some(path.as_ref()), reader)?;
+        Ok(self.post_process(scene))
+    }
+
+    #[cfg(any(feature = "collada", feature = "obj", feature = "stl"))]
     fn post_process(&self, mut scene: Scene) -> Scene {
         if self.merge_meshes && scene.meshes.len() != 1 {
             scene.meshes = vec![crate::Mesh::merge(scene.meshes)];
+            // TODO
+            scene.materials = vec![crate::Material::default()];
         }
         scene
     }
@@ -207,7 +231,7 @@ impl fmt::Debug for Loader {
 enum FileType {
     Stl,
     Collada,
-    // Obj,
+    Obj,
     Unknown,
 }
 
@@ -215,7 +239,7 @@ fn detect_file_type(path: &Path, bytes: &[u8]) -> FileType {
     match path.extension().and_then(OsStr::to_str) {
         Some("stl" | "STL") => return FileType::Stl,
         Some("dae" | "DAE") => return FileType::Collada,
-        // Some("obj" | "OBJ") => return FileType::Obj,
+        Some("obj" | "OBJ") => return FileType::Obj,
         _ => {}
     }
     // Fallback: If failed to detect file type from extension,

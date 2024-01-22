@@ -1,3 +1,6 @@
+#[cfg(feature = "obj")]
+use std::{borrow::Cow, ffi::OsStr, path::Path, str};
+
 // This is the same as s.starts_with(needle), but faster if the length of the
 // needle is known at compile time.
 #[inline(always)] // Ensure the code getting the length of the needle is inlined.
@@ -41,7 +44,20 @@ pub(crate) fn starts_with(mut s: &[u8], mut needle: &'static [u8]) -> bool {
     s.starts_with(needle)
 }
 
-#[cfg(feature = "stl")]
+#[cfg(feature = "obj")]
+#[inline]
+pub(crate) const fn memchr_naive(needle: u8, mut s: &[u8]) -> Option<usize> {
+    let start = s;
+    while let Some((&b, s_next)) = s.split_first() {
+        if b == needle {
+            return Some(start.len() - s.len());
+        }
+        s = s_next;
+    }
+    None
+}
+
+#[cfg(any(feature = "obj", feature = "stl"))]
 #[inline]
 pub(crate) const fn memchr_naive_table(
     needle_mask: u8,
@@ -58,7 +74,7 @@ pub(crate) const fn memchr_naive_table(
     None
 }
 
-#[cfg(feature = "stl")]
+#[cfg(any(feature = "obj", feature = "stl"))]
 #[inline]
 pub(crate) const fn memrchr_naive(needle: u8, mut s: &[u8]) -> Option<usize> {
     let start = s;
@@ -71,7 +87,7 @@ pub(crate) const fn memrchr_naive(needle: u8, mut s: &[u8]) -> Option<usize> {
     None
 }
 
-#[cfg(feature = "stl")]
+#[cfg(any(feature = "obj", feature = "stl"))]
 #[inline]
 pub(crate) const fn bytecount_naive(needle: u8, mut s: &[u8]) -> usize {
     let mut n = 0;
@@ -80,4 +96,54 @@ pub(crate) const fn bytecount_naive(needle: u8, mut s: &[u8]) -> usize {
         s = s_next;
     }
     n
+}
+
+#[cfg(feature = "obj")]
+#[allow(clippy::unnecessary_wraps)] // clippy bug: this lint doesn't consider cfg attribute
+pub(crate) fn os_str_from_bytes(bytes: &[u8]) -> Result<&OsStr, std::str::Utf8Error> {
+    #[cfg(any(unix, target_os = "wasi"))]
+    {
+        #[cfg(unix)]
+        use std::os::unix::ffi::OsStrExt as _;
+        #[cfg(target_os = "wasi")]
+        use std::os::wasi::ffi::OsStrExt as _;
+        Ok(OsStr::from_bytes(bytes))
+    }
+    #[cfg(not(any(unix, target_os = "wasi")))]
+    {
+        std::str::from_utf8(bytes).map(OsStr::new)
+    }
+}
+#[cfg(feature = "obj")]
+pub(crate) fn path_from_bytes(bytes: &[u8]) -> Result<&Path, std::str::Utf8Error> {
+    os_str_from_bytes(bytes).map(Path::new)
+}
+
+// Ideally, we want to use Utf8Chunks here, but it is unstable.
+#[cfg(feature = "obj")]
+#[inline]
+pub(crate) fn from_utf8_lossy(mut bytes: &[u8]) -> Cow<'_, str> {
+    let mut base = String::new();
+    loop {
+        match str::from_utf8(bytes) {
+            Ok(s) => {
+                if base.is_empty() {
+                    return s.into();
+                }
+                base.push_str(s);
+                return base.into();
+            }
+            Err(e) => {
+                let valid_up_to = e.valid_up_to();
+                let s = str::from_utf8(&bytes[..valid_up_to]).unwrap();
+                base.push_str(s);
+                base.push(char::REPLACEMENT_CHARACTER);
+                if let Some(error_len) = e.error_len() {
+                    bytes = &bytes[valid_up_to + error_len..];
+                } else {
+                    return base.into();
+                }
+            }
+        }
+    }
 }

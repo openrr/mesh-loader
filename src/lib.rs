@@ -19,7 +19,7 @@
     clippy::wildcard_imports, // TODO
 )]
 
-#[cfg(any(feature = "collada", feature = "stl"))]
+#[cfg(any(feature = "collada", feature = "obj", feature = "stl"))]
 #[macro_use]
 mod error;
 
@@ -32,16 +32,16 @@ pub use common::*;
 
 #[cfg(feature = "collada")]
 pub mod collada;
-// #[cfg(feature = "obj")]
-// pub mod obj;
+#[cfg(feature = "obj")]
+pub mod obj;
 #[cfg(feature = "stl")]
 pub mod stl;
 
 // Not public API. (exposed for benchmarks)
 #[doc(hidden)]
-#[cfg(any(feature = "collada", feature = "stl"))]
+#[cfg(any(feature = "collada", feature = "obj", feature = "stl"))]
 pub mod __private {
     pub use crate::utils::float;
-    #[cfg(feature = "collada")]
+    #[cfg(any(feature = "collada", feature = "obj"))]
     pub use crate::utils::int;
 }

@@ -5,7 +5,7 @@ edition = "2021"
 rust-version = "1.60"
 license = "Apache-2.0"
 repository = "https://github.com/openrr/mesh-loader"
-keywords = ["asset", "mesh", "stl", "collada"] # TODO: "obj"
+keywords = ["asset", "mesh", "stl", "collada", "obj"]
 categories = ["parser-implementations", "graphics"]
 exclude = ["/.*", "/assets"]
 description = """
@@ -13,7 +13,7 @@ Fast parser for 3D-model-formats.
 """
 
 [features]
-default = ["stl", "collada"]
+default = ["stl", "collada", "obj"]
 
 # STL (.stl)
 # https://en.wikipedia.org/wiki/STL_(file_format)
@@ -21,10 +21,9 @@ stl = []
 # COLLADA (.dae)
 # https://en.wikipedia.org/wiki/COLLADA
 collada = ["roxmltree"]
-# TODO
-# # Wavefront OBJ (.obj)
-# # https://en.wikipedia.org/wiki/Wavefront_.obj_file
-# obj = []
+# Wavefront OBJ (.obj)
+# https://en.wikipedia.org/wiki/Wavefront_.obj_file
+obj = []
 
 [dependencies]
 # Used in COLLADA parsing.
