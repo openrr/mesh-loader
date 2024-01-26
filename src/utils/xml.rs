@@ -62,8 +62,8 @@ where
     }
 }
 
+/*
 /// Parses float array "<float> <float> <float>..."
-#[allow(dead_code)] // TODO
 pub(crate) fn parse_float_array<T>(text: &str) -> ParseFloatArray<'_, T>
 where
     T: float::Float,
@@ -94,10 +94,11 @@ where
                 self.text = trim_start(self.text.get(n..).unwrap_or_default());
                 Some(Ok(value))
             }
-            None => Some(Err(format_err!("error while parsing an integer"))),
+            None => Some(Err(format_err!("error while parsing a float"))),
         }
     }
 }
+*/
 
 /// Parses float array "<float> <float> <float>..."
 pub(crate) fn parse_float_array_exact<T>(text: &str, num: usize) -> ParseFloatArrayExact<'_, T>
@@ -142,7 +143,7 @@ where
                 self.count += 1;
                 Some(Ok(value))
             }
-            None => Some(Err(format_err!("error while parsing an integer"))),
+            None => Some(Err(format_err!("error while parsing a float"))),
         }
     }
 }
