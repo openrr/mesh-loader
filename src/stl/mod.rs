@@ -149,7 +149,7 @@ fn read_binary_header(bytes: &[u8], parse_color: bool) -> Result<BinaryHeader<'_
         let expect = b"COLOR=";
         while s.len() >= expect.len() + 4 {
             if token(&mut s, expect) {
-                const INV_BYTE: f32 = 1.0 / 255.0;
+                const INV_BYTE: f32 = 1. / 255.;
                 reverse_color = true;
                 default_color = [
                     s[0] as f32 * INV_BYTE,
@@ -209,11 +209,11 @@ fn read_binary_triangles(header: &BinaryHeader<'_>) -> Mesh {
         // Handling colors in STL is not standardized. We use the same way as assimp.
         // https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/STL/STLLoader.cpp#L502-L529
         if triangle.color & has_color_mask != 0 {
-            const INV_VAL: f32 = 1.0 / 31.0;
+            const INV_VAL: f32 = 1. / 31.;
             if mesh.colors[0].is_empty() {
                 mesh.colors[0] = vec![header.default_color; num_vertices];
             }
-            let a = 1.0;
+            let a = 1.;
             let color = if header.reverse_color {
                 let r = (triangle.color & 0x1f) as f32 * INV_VAL;
                 let g = ((triangle.color & (0x1f << 5)) >> 5) as f32 * INV_VAL;

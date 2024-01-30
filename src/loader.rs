@@ -50,12 +50,13 @@ impl<B: AsRef<[u8]>> Loader<B> {
     /// default reader does not support.
     ///
     /// ```
-    /// use mesh_loader::Loader;
     /// use std::fs;
+    ///
+    /// use mesh_loader::Loader;
     ///
     /// let loader = Loader::default().custom_reader(|path| {
     ///     match path.to_str() {
-    ///         Some(url) if url.starts_with("http://") || url.starts_with("https://") => {
+    ///         Some(url) if url.starts_with("https://") || url.starts_with("http://") => {
     ///             // Fetch online file
     ///             // ...
     /// #           unimplemented!()
@@ -80,9 +81,10 @@ impl<B: AsRef<[u8]>> Loader<B> {
     /// This is useful when using mmap.
     ///
     /// ```
+    /// use std::fs::File;
+    ///
     /// use memmap2::Mmap;
     /// use mesh_loader::Loader;
-    /// use std::fs::File;
     ///
     /// let loader = Loader::with_custom_reader(|path| unsafe { Mmap::map(&File::open(path)?) });
     /// ```

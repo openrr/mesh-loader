@@ -34,11 +34,13 @@ pub(crate) mod parse;
 mod slow;
 mod table;
 
-use self::common::{BiasedFp, ByteSlice};
-use self::float::RawFloat;
-use self::lemire::compute_float;
-use self::parse::{parse_inf_nan, parse_partial_number};
-use self::slow::parse_long_mantissa;
+use self::{
+    common::{BiasedFp, ByteSlice},
+    float::RawFloat,
+    lemire::compute_float,
+    parse::{parse_inf_nan, parse_partial_number},
+    slow::parse_long_mantissa,
+};
 
 #[inline]
 pub fn parse<T: Float>(bytes: &[u8]) -> Option<T> {

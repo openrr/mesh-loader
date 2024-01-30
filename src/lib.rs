@@ -14,9 +14,7 @@
     clippy::match_same_arms, // https://github.com/rust-lang/rust-clippy/issues/12044
     clippy::missing_panics_doc,
     clippy::must_use_candidate,
-    clippy::naive_bytecount,
     clippy::unreadable_literal,
-    clippy::wildcard_imports, // TODO
 )]
 
 #[cfg(any(feature = "collada", feature = "obj", feature = "stl"))]
