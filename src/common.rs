@@ -23,6 +23,7 @@ pub struct Scene {
 pub struct Mesh {
     pub name: String,
     pub vertices: Vec<Vec3>,
+    // TODO: use Vec3?
     pub texcoords: [Vec<Vec2>; MAX_NUMBER_OF_TEXCOORDS],
     pub normals: Vec<Vec3>,
     pub faces: Vec<Face>,
@@ -102,26 +103,54 @@ impl fmt::Debug for Mesh {
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct Material {
+    // Refs: https://github.com/assimp/assimp/blob/v5.3.1/include/assimp/material.h#L944-L955
     pub name: String,
+    pub shading_model: Option<ShadingModel>,
+    pub opacity: Option<f32>,
+    pub shininess: Option<f32>,
+    pub reflectivity: Option<f32>,
+    pub index_of_refraction: Option<f32>,
+
     pub color: Colors,
     pub texture: Textures,
 }
 
+// Refs: https://github.com/assimp/assimp/blob/v5.3.1/include/assimp/material.h#L956-L961
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct Colors {
-    pub ambient: Option<Color4>,
     pub diffuse: Option<Color4>,
+    pub ambient: Option<Color4>,
     pub specular: Option<Color4>,
     pub emissive: Option<Color4>,
+    pub transparent: Option<Color4>,
+    pub reflective: Option<Color4>,
 }
 
+// Refs: https://github.com/assimp/assimp/blob/v5.3.1/include/assimp/material.h#L188
 #[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct Textures {
-    pub ambient: Option<PathBuf>,
     pub diffuse: Option<PathBuf>,
     pub specular: Option<PathBuf>,
+    pub ambient: Option<PathBuf>,
     pub emissive: Option<PathBuf>,
+    pub height: Option<PathBuf>,
     pub normal: Option<PathBuf>,
+    pub shininess: Option<PathBuf>,
+    pub opacity: Option<PathBuf>,
+    pub displacement: Option<PathBuf>,
+    pub lightmap: Option<PathBuf>,
+    pub reflection: Option<PathBuf>,
+}
+
+// Refs: https://github.com/assimp/assimp/blob/v5.3.1/include/assimp/material.h#L355
+#[derive(Debug, Clone)]
+#[non_exhaustive]
+pub enum ShadingModel {
+    Flat,
+    Gouraud,
+    Phong,
+    Blinn,
+    NoShading,
 }

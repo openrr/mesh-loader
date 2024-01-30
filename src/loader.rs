@@ -175,9 +175,9 @@ impl<B: AsRef<[u8]>> Loader<B> {
     pub fn load_collada_from_slice<P: AsRef<Path>>(
         &self,
         bytes: &[u8],
-        _path: P,
+        path: P,
     ) -> io::Result<Scene> {
-        let scene = crate::collada::from_slice(bytes)?;
+        let scene = crate::collada::from_slice_internal(bytes, Some(path.as_ref()))?;
         Ok(self.post_process(scene))
     }
 

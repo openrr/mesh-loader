@@ -9,7 +9,7 @@ use kiss3d::{light::Light, nalgebra as na, scene::SceneNode, window::Window};
 use lexopt::prelude::*;
 use na::{Translation3, UnitQuaternion, Vector3};
 
-const DEFAULT_SCALE: f32 = 0.1;
+const DEFAULT_SCALE: f32 = 1.;
 
 #[derive(Debug)]
 struct Args {

@@ -19,7 +19,7 @@ use crate::{
         float, int,
         utf16::decode_bytes,
     },
-    Color4, Mesh, Scene, Vec2, Vec3,
+    Color4, Mesh, Scene, ShadingModel, Vec2, Vec3,
 };
 
 /// Parses meshes from bytes of Wavefront OBJ text.
@@ -827,22 +827,33 @@ fn read_mtl_internal(
                                     mtl_dir: Option<&Path>,
                                 ) -> Option<PathBuf> {
                                     let mut p = texture?;
-                                    if p.is_empty()
-                                        || p.len() == 2
-                                            && (p.starts_with(b".\\") || p.starts_with(b"./"))
-                                    {
+                                    if p.is_empty() {
                                         return None;
                                     }
                                     match mtl_dir {
                                         Some(mtl_dir) => {
-                                            p = p.strip_prefix(b".\\").unwrap_or(p);
-                                            p = p.strip_prefix(b"./").unwrap_or(p);
+                                            let tmp: Vec<_>;
+                                            if p.contains(&b'\\') {
+                                                tmp = p
+                                                    .iter()
+                                                    .map(|&b| if b == b'\\' { b'/' } else { b })
+                                                    .collect();
+                                                p = &*tmp;
+                                            }
+                                            if p.starts_with(b"/..") {
+                                                p = p.strip_prefix(b"/").unwrap_or(p);
+                                            }
                                             let p = path_from_bytes(p).ok()?;
-                                            Some(mtl_dir.join(p))
+                                            let p = mtl_dir.join(p);
+                                            if p.exists() {
+                                                Some(p)
+                                            } else {
+                                                None
+                                            }
                                         }
                                         None => {
-                                            let p = path_from_bytes(p).ok()?;
-                                            Some(p.to_owned())
+                                            let p = path_from_bytes(p).ok()?.to_owned();
+                                            Some(p)
                                         }
                                     }
                                 }
@@ -850,18 +861,46 @@ fn read_mtl_internal(
                                 let material_index = materials.len() as u32;
                                 materials.push(common::Material {
                                     name: from_utf8_lossy(current_name).into_owned(),
+                                    // Refs: https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Obj/ObjFileImporter.cpp#L591
+                                    shading_model: match mat.illumination_model {
+                                        Some(0) => Some(ShadingModel::NoShading),
+                                        Some(1) => Some(ShadingModel::Gouraud),
+                                        Some(2) => Some(ShadingModel::Phong),
+                                        _ => None,
+                                    },
+                                    shininess: mat.shininess,
+                                    opacity: mat.alpha,
+                                    reflectivity: None,
+                                    index_of_refraction: mat.index_of_refraction,
+                                    // roughness_factor: mat.roughness,
+                                    // metallic_factor: mat.metallic,
+                                    // sheen_color_factor: mat.sheen,
+                                    // clearcoat_factor: mat.clearcoat_thickness,
+                                    // clearcoat_roughness_factor: mat.clearcoat_roughness,
+                                    // anisotropy_factor: mat.anisotropy,
                                     color: crate::Colors {
                                         ambient: color4(mat.ambient),
                                         diffuse: color4(mat.diffuse),
                                         specular: color4(mat.specular),
                                         emissive: color4(mat.emissive),
+                                        transparent: color4(mat.transparent),
+                                        reflective: None,
                                     },
                                     texture: crate::Textures {
-                                        ambient: texture_path(mat.ambient_texture, mtl_dir),
                                         diffuse: texture_path(mat.diffuse_texture, mtl_dir),
-                                        specular: texture_path(mat.specular_texture, mtl_dir),
+                                        ambient: texture_path(mat.ambient_texture, mtl_dir),
                                         emissive: texture_path(mat.emissive_texture, mtl_dir),
+                                        specular: texture_path(mat.specular_texture, mtl_dir),
+                                        height: texture_path(mat.bump_texture, mtl_dir),
                                         normal: texture_path(mat.normal_texture, mtl_dir),
+                                        reflection: None, // TODO
+                                        displacement: texture_path(
+                                            mat.displacement_texture,
+                                            mtl_dir,
+                                        ),
+                                        opacity: texture_path(mat.opacity_texture, mtl_dir),
+                                        shininess: texture_path(mat.specularity_texture, mtl_dir),
+                                        lightmap: None,
                                     },
                                 });
                                 material_map.insert(current_name.to_owned(), material_index);
@@ -1116,12 +1155,14 @@ struct Material<'a> {
     emissive_texture: Option<&'a [u8]>,
     bump_texture: Option<&'a [u8]>,
     normal_texture: Option<&'a [u8]>,
+    // reflection_texture: Option<&'a [u8]>,
     specularity_texture: Option<&'a [u8]>,
     opacity_texture: Option<&'a [u8]>,
     displacement_texture: Option<&'a [u8]>,
     roughness_texture: Option<&'a [u8]>,
     metallic_texture: Option<&'a [u8]>,
     sheen_texture: Option<&'a [u8]>,
+    // rma_texture: Option<&'a [u8]>,
 
     // Colors
     ambient: Option<[f32; 3]>,
@@ -1140,6 +1181,7 @@ struct Material<'a> {
     clearcoat_thickness: Option<f32>,
     clearcoat_roughness: Option<f32>,
     anisotropy: Option<f32>,
+    // bump_multiplier: Option<f32>,
 }
 
 const __: u8 = 0;
