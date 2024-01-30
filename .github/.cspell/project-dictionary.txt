@@ -50,6 +50,7 @@ SIDREF
 significand
 specularity
 splitn
+taiki
 testline
 testmixed
 testpoints

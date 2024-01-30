@@ -7,7 +7,13 @@
     )
 ))]
 #![forbid(unsafe_code)]
-#![warn(clippy::exhaustive_enums, clippy::exhaustive_structs)]
+#![warn(
+    // Lints that may help when writing public library.
+    // missing_docs, // TODO
+    clippy::exhaustive_enums,
+    clippy::exhaustive_structs,
+    clippy::impl_trait_in_params,
+)]
 #![allow(
     clippy::cast_lossless,
     clippy::inline_always,
