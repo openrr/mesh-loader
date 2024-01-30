@@ -498,7 +498,14 @@ fn parse_effect_color<'a>(
                     // texcoord,
                 };
             }
-            "param" => warn::unsupported_child_elem(child),
+            "param" => {
+                // warn!(
+                //     "<{}> child element in <{}> element is unsupported ({})",
+                //     child.tag_name().name(),
+                //     child.parent_element().unwrap().tag_name().name(),
+                //     child.node_location()
+                // );
+            }
             _ => {}
         }
     }
@@ -517,7 +524,14 @@ fn parse_effect_float(node: xml::Node<'_, '_>) -> io::Result<Option<f32>> {
                         .ok_or_else(|| format_err!("error while parsing a float"))?,
                 );
             }
-            "param" => warn::unsupported_child_elem(child),
+            "param" => {
+                // warn!(
+                //     "<{}> child element in <{}> element is unsupported ({})",
+                //     child.tag_name().name(),
+                //     child.parent_element().unwrap().tag_name().name(),
+                //     child.node_location()
+                // );
+            }
             _ => return Err(error::unexpected_child_elem(child)),
         }
     }
@@ -552,7 +566,7 @@ impl FromStr for Opaque {
             "A_ONE" => Self::A_ONE,
             "RGB_ZERO" => Self::RGB_ZERO,
             "RGB_ONE" => Self::RGB_ONE,
-            _ => bail!("unknown shade type {:?}", s),
+            _ => bail!("unknown opaque type {:?}", s),
         })
     }
 }

@@ -5,7 +5,7 @@ use std::{fmt, path::Path};
 #[cfg(any(feature = "obj", feature = "stl"))]
 use crate::utils::bytes::{bytecount_naive, memrchr_naive};
 
-#[cfg(any(feature = "collada", feature = "obj"))]
+#[cfg(feature = "collada")]
 macro_rules! format_err {
     ($msg:expr $(,)?) => {
         crate::error::invalid_data($msg)
@@ -15,7 +15,7 @@ macro_rules! format_err {
     };
 }
 
-#[cfg(any(feature = "collada", feature = "obj"))]
+#[cfg(feature = "collada")]
 macro_rules! bail {
     ($($tt:tt)*) => {
         return Err(format_err!($($tt)*))

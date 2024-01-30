@@ -183,7 +183,12 @@ fn parse_geometry<'a>(
                 mesh = Some(parse_mesh(cx, node)?);
             }
             "convex_mesh" | "spline" | "brep" => {
-                warn::unsupported_child_elem(node);
+                // warn!(
+                //     "<{}> child element in <{}> element is unsupported ({})",
+                //     child.tag_name().name(),
+                //     child.parent_element().unwrap().tag_name().name(),
+                //     child.node_location()
+                // );
                 return Ok(None);
             }
             "asset" | "extra" => { /* skip */ }
@@ -479,7 +484,14 @@ fn parse_primitive<'a>(node: xml::Node<'a, '_>, ty: PrimitiveType) -> io::Result
                     }
                 }
             }
-            "ph" => warn::unsupported_child_elem(node),
+            "ph" => {
+                // warn!(
+                //     "<{}> child element in <{}> element is unsupported ({})",
+                //     child.tag_name().name(),
+                //     child.parent_element().unwrap().tag_name().name(),
+                //     child.node_location()
+                // );
+            }
             "extra" => { /* skip */ }
             _ => return Err(error::unexpected_child_elem(node)),
         }

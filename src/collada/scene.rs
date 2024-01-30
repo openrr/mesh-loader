@@ -195,7 +195,14 @@ fn parse_visual_scene<'a>(node: xml::Node<'a, '_>, nodes: &mut Vec<Node<'a>>) ->
             "node" => {
                 scene_nodes.push(parse_node(child, nodes, this_index)?);
             }
-            "evaluate_scene" => warn::unsupported_child_elem(child),
+            "evaluate_scene" => {
+                // warn!(
+                //     "<{}> child element in <{}> element is unsupported ({})",
+                //     child.tag_name().name(),
+                //     child.parent_element().unwrap().tag_name().name(),
+                //     child.node_location()
+                // );
+            }
             "asset" | "extra" => { /* skip */ }
             _ => return Err(error::unexpected_child_elem(child)),
         }
@@ -404,7 +411,14 @@ fn parse_instance_material<'a>(node: xml::Node<'a, '_>) -> io::Result<SemanticMa
                 //     },
                 // );
             }
-            "bind" => warn::unsupported_child_elem(child),
+            "bind" => {
+                // warn!(
+                //     "<{}> child element in <{}> element is unsupported ({})",
+                //     child.tag_name().name(),
+                //     child.parent_element().unwrap().tag_name().name(),
+                //     child.node_location()
+                // );
+            }
             "extra" => { /* skip */ }
             _ => return Err(error::unexpected_child_elem(child)),
         }
