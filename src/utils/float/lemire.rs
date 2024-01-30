@@ -1,8 +1,10 @@
 //! Implementation of the Eisel-Lemire algorithm.
 
-use super::common::BiasedFp;
-use super::float::RawFloat;
-use super::table::{LARGEST_POWER_OF_FIVE, POWER_OF_FIVE_128, SMALLEST_POWER_OF_FIVE};
+use super::{
+    common::BiasedFp,
+    float::RawFloat,
+    table::{LARGEST_POWER_OF_FIVE, POWER_OF_FIVE_128, SMALLEST_POWER_OF_FIVE},
+};
 
 /// Compute w * 10^q using an extended-precision float representation.
 ///

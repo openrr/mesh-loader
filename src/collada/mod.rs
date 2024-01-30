@@ -2,6 +2,8 @@
 //!
 //! [COLLADA]: https://en.wikipedia.org/wiki/COLLADA
 
+#![allow(clippy::wildcard_imports)] // TODO
+
 mod geometry;
 mod instance;
 mod iter;

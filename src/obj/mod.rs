@@ -30,7 +30,7 @@ pub fn from_slice<B: AsRef<[u8]>, F: FnMut(&Path) -> io::Result<B>>(
 ) -> io::Result<Scene> {
     // If it is UTF-16 with BOM, it is converted to UTF-8, otherwise it is parsed as bytes.
     // We don't require UTF-8 here, as we want to support files that are partially non-UTF-8 like:
-    // https://github.com/assimp/assimp/blob/ac29847d5679c243d7649fe8a5d5e48f0f57c297/test/models/OBJ/regr01.mtl#L67
+    // https://github.com/assimp/assimp/blob/v5.3.1/test/models/OBJ/regr01.mtl#L67
     let bytes = &decode_bytes(bytes)?;
     match read_obj(bytes, path, &mut |path, materials, material_map| {
         match reader(path) {
@@ -584,8 +584,9 @@ fn push_vertex(
             .push(*normals.get(vn).ok_or(ErrorKind::Oob(vn, 0))?);
     }
     if !colors.is_empty() {
-        let color = colors.get(v).ok_or(ErrorKind::Oob(v, 0))?;
-        mesh.colors[0].push([color[0], color[1], color[2], 1.0]);
+        let rgb = colors.get(v).ok_or(ErrorKind::Oob(v, 0))?;
+        // a is 1 by default: https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Obj/ObjFileImporter.cpp#L233
+        mesh.colors[0].push([rgb[0], rgb[1], rgb[2], 1.]);
     }
     Ok(())
 }
@@ -760,7 +761,7 @@ fn read_mtl_internal(
                         if skip_spaces(&mut s) {
                             let f = read_float1(&mut s, "Tr")?;
                             if let Some(mat) = &mut mat {
-                                mat.alpha = Some(1.0 - f);
+                                mat.alpha = Some(1. - f);
                             }
                             continue;
                         }
@@ -805,7 +806,7 @@ fn read_mtl_internal(
                     if skip_spaces(&mut s) {
                         let f = read_float1(&mut s, "Ni")?;
                         if let Some(mat) = &mut mat {
-                            mat.ior = Some(f);
+                            mat.index_of_refraction = Some(f);
                         }
                         continue;
                     }
@@ -817,8 +818,9 @@ fn read_mtl_internal(
                             let (name, s_next) = name(s);
                             if let Some(mat) = mat.replace(Material::default()) {
                                 fn color4(color3: Option<[f32; 3]>) -> Option<Color4> {
-                                    let c = color3?;
-                                    Some([c[0], c[1], c[2], 1.0])
+                                    let rgb = color3?;
+                                    // a is 1 by default: https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Obj/ObjFileImporter.cpp#L233
+                                    Some([rgb[0], rgb[1], rgb[2], 1.])
                                 }
                                 fn texture_path(
                                     texture: Option<&[u8]>,
@@ -1054,7 +1056,7 @@ fn read_texture<'a>(s: &mut &'a [u8], mat: &mut Option<Material<'a>>) -> bool {
     } else if token(s, b"refl") {
         if skip_spaces(s) {
             let (_name, s_next) = name(s);
-            // ignore https://github.com/assimp/assimp/blob/ac29847d5679c243d7649fe8a5d5e48f0f57c297/code/AssetLib/Obj/ObjFileMtlImporter.cpp#L415
+            // ignore https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Obj/ObjFileMtlImporter.cpp#L415
             *s = s_next;
             return true;
         }
@@ -1129,7 +1131,7 @@ struct Material<'a> {
     alpha: Option<f32>,
     shininess: Option<f32>,
     illumination_model: Option<u8>,
-    ior: Option<f32>,
+    index_of_refraction: Option<f32>,
     transparent: Option<[f32; 3]>,
 
     roughness: Option<f32>,
