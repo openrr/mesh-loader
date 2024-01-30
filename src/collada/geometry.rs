@@ -1,53 +1,58 @@
 use super::*;
 
-/// See [specification][spec] for details.
+/// The `<library_geometries>` element.
 ///
-/// [spec]: https://www.khronos.org/files/collada_spec_1_4.pdf#page=99
+/// See the [specification][1.4] for details.
+///
+/// [1.4] https://www.khronos.org/files/collada_spec_1_4.pdf#page=99
 #[derive(Default)]
-pub(super) struct LibraryGeometries {
-    /// The unique identifier of this element.
-    pub(super) id: Option<String>,
-    /// The name of this element.
-    pub(super) name: Option<String>,
+pub(super) struct LibraryGeometries<'a> {
+    // /// The unique identifier of this element.
+    // pub(super) id: Option<&'a str>,
+    // /// The name of this element.
+    // pub(super) name: Option<&'a str>,
+    pub(super) geometries: BTreeMap<&'a str, Geometry<'a>>,
 
-    pub(super) geometries: BTreeMap<String, Geometry>,
-
-    pub(super) accessors: HashMap<String, Accessor>,
-    pub(super) array_data: HashMap<String, ArrayData>,
+    pub(super) accessors: HashMap<&'a str, Accessor<'a>>,
+    pub(super) array_data: HashMap<&'a str, ArrayData<'a>>,
 }
 
-/// See [specification][spec] for details.
+/// The `<geometry>` element.
 ///
-/// [spec]: https://www.khronos.org/files/collada_spec_1_4.pdf#page=68
-pub(super) struct Geometry {
+/// See the [specification][1.4] for details.
+///
+/// [1.4]: https://www.khronos.org/files/collada_spec_1_4.pdf#page=68
+pub(super) struct Geometry<'a> {
     /// The unique identifier of this element.
-    pub(super) id: String,
-    /// The name of this element.
-    #[allow(dead_code)] // TODO
-    pub(super) name: Option<String>,
-
-    pub(super) mesh: Mesh,
+    pub(super) id: &'a str,
+    // /// The name of this element.
+    // pub(super) name: Option<&'a str>,
+    pub(super) mesh: Mesh<'a>,
 }
 
-pub(super) struct Mesh {
-    pub(super) vertices: Vertices,
-    pub(super) primitives: Vec<Primitive>,
+/// The `<mesh>` element.
+///
+/// See the [specification][1.4] for details.
+///
+/// [1.4]: https://www.khronos.org/files/collada_spec_1_4.pdf#page=112
+pub(super) struct Mesh<'a> {
+    pub(super) vertices: Vertices<'a>,
+    pub(super) primitives: Vec<Primitive<'a>>,
 }
 
-pub(super) struct VerticesInputs {
-    pub(super) position: UnsharedInput,
-    pub(super) normal: Option<UnsharedInput>,
-    pub(super) texcoord: Option<UnsharedInput>,
-}
-
-pub(super) struct Vertices {
+pub(super) struct Vertices<'a> {
     /// The unique identifier of this element.
-    pub(super) id: String,
-    /// The name of this element.
-    #[allow(dead_code)] // TODO
-    pub(super) name: Option<String>,
+    pub(super) id: &'a str,
+    // /// The name of this element.
+    // pub(super) name: Option<&'a str>,
+    pub(super) input: VerticesInputs<'a>,
+}
 
-    pub(super) input: VerticesInputs,
+pub(super) struct VerticesInputs<'a> {
+    pub(super) position: UnsharedInput<'a>,
+    pub(super) normal: Option<UnsharedInput<'a>>,
+    pub(super) texcoord: Option<UnsharedInput<'a>>,
+    pub(super) color: Option<UnsharedInput<'a>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -82,29 +87,27 @@ impl PrimitiveType {
     }
 }
 
-pub(super) struct PrimitiveInputs {
-    pub(super) vertex: SharedInput<Vertices>,
-    pub(super) normal: Option<SharedInput>,
-    #[allow(dead_code)] // TODO(material)
-    pub(super) color: Option<SharedInput>,
-    pub(super) texcoord: Vec<SharedInput>,
+pub(super) struct PrimitiveInputs<'a> {
+    pub(super) vertex: SharedInput<'a, Vertices<'a>>,
+    pub(super) normal: Option<SharedInput<'a>>,
+    pub(super) color: Option<SharedInput<'a>>,
+    pub(super) texcoord: Vec<SharedInput<'a>>,
 }
 
-pub(super) struct Primitive {
+pub(super) struct Primitive<'a> {
     /// The type of this element.
     pub(super) ty: PrimitiveType,
 
-    /// The name of this element.
-    #[allow(dead_code)] // TODO
-    pub(super) name: Option<String>,
+    // /// The name of this element.
+    // pub(super) name: Option<&'a str>,
     /// The number of primitives.
     pub(super) count: u32,
     /// A symbol for a material.
-    #[allow(dead_code)] // TODO(material)
-    pub(super) material: Option<String>,
+    #[allow(dead_code)] // TODO
+    pub(super) material: Option<&'a str>,
 
     /// Declares the input semantics of a data source and connects a consumer to that source.
-    pub(super) input: Option<PrimitiveInputs>,
+    pub(super) input: Option<PrimitiveInputs<'a>>,
     /// The number of vertices for one polygon.
     ///
     /// Only [polylist] actually have a vcount element, but we use this field to
@@ -136,13 +139,13 @@ pub(super) struct Primitive {
 // -----------------------------------------------------------------------------
 // Parsing
 
-pub(super) fn parse_library_geometries(
-    cx: &mut Context,
-    node: xml::Node<'_, '_>,
+pub(super) fn parse_library_geometries<'a>(
+    cx: &mut Context<'a>,
+    node: xml::Node<'a, '_>,
 ) -> io::Result<()> {
     debug_assert_eq!(node.tag_name().name(), "library_geometries");
-    cx.library_geometries.id = node.attribute("id").map(Into::into);
-    cx.library_geometries.name = node.attribute("name").map(Into::into);
+    // cx.library_geometries.id = node.attribute("id");
+    // cx.library_geometries.name = node.attribute("name");
 
     for node in node.element_children() {
         match node.tag_name().name() {
@@ -150,7 +153,7 @@ pub(super) fn parse_library_geometries(
                 if let Some(geometry) = parse_geometry(cx, node)? {
                     cx.library_geometries
                         .geometries
-                        .insert(geometry.id.clone(), geometry);
+                        .insert(geometry.id, geometry);
                 }
             }
             "asset" | "extra" => { /* skip */ }
@@ -165,7 +168,10 @@ pub(super) fn parse_library_geometries(
     Ok(())
 }
 
-fn parse_geometry(cx: &mut Context, node: xml::Node<'_, '_>) -> io::Result<Option<Geometry>> {
+fn parse_geometry<'a>(
+    cx: &mut Context<'a>,
+    node: xml::Node<'a, '_>,
+) -> io::Result<Option<Geometry<'a>>> {
     debug_assert_eq!(node.tag_name().name(), "geometry");
     // The specification say it is optional, but it is actually required.
     let id = node.required_attribute("id")?;
@@ -191,13 +197,13 @@ fn parse_geometry(cx: &mut Context, node: xml::Node<'_, '_>) -> io::Result<Optio
     };
 
     Ok(Some(Geometry {
-        id: id.into(),
-        name: node.attribute("name").map(Into::into),
+        id,
+        // name: node.attribute("name"),
         mesh,
     }))
 }
 
-fn parse_mesh(cx: &mut Context, node: xml::Node<'_, '_>) -> io::Result<Mesh> {
+fn parse_mesh<'a>(cx: &mut Context<'a>, node: xml::Node<'a, '_>) -> io::Result<Mesh<'a>> {
     debug_assert_eq!(node.tag_name().name(), "mesh");
     let mut primitives = vec![];
     let mut has_source = false;
@@ -242,13 +248,14 @@ fn parse_mesh(cx: &mut Context, node: xml::Node<'_, '_>) -> io::Result<Mesh> {
     })
 }
 
-fn parse_vertices(node: xml::Node<'_, '_>) -> io::Result<Vertices> {
+fn parse_vertices<'a>(node: xml::Node<'a, '_>) -> io::Result<Vertices<'a>> {
     debug_assert_eq!(node.tag_name().name(), "vertices");
     let id = node.required_attribute("id")?;
 
     let mut input_position = None;
     let mut input_normal = None;
     let mut input_texcoord = None;
+    let mut input_color = None;
 
     for node in node.element_children() {
         match node.tag_name().name() {
@@ -258,6 +265,7 @@ fn parse_vertices(node: xml::Node<'_, '_>) -> io::Result<Vertices> {
                     InputSemantic::POSITION => input_position = Some(i),
                     InputSemantic::NORMAL => input_normal = Some(i),
                     InputSemantic::TEXCOORD => input_texcoord = Some(i),
+                    InputSemantic::COLOR => input_color = Some(i),
                     _semantic => {
                         // warn!(
                         //     "unsupported semantic {:?} in <input> ({})",
@@ -279,12 +287,13 @@ fn parse_vertices(node: xml::Node<'_, '_>) -> io::Result<Vertices> {
     };
 
     Ok(Vertices {
-        id: id.into(),
-        name: node.attribute("name").map(Into::into),
+        id,
+        // name: node.attribute("name"),
         input: VerticesInputs {
             position: input_position,
             normal: input_normal,
             texcoord: input_texcoord,
+            color: input_color,
         },
     })
 }
@@ -306,7 +315,7 @@ impl FromStr for PrimitiveType {
     }
 }
 
-fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Primitive> {
+fn parse_primitive<'a>(node: xml::Node<'a, '_>, ty: PrimitiveType) -> io::Result<Primitive<'a>> {
     debug_assert_eq!(node.tag_name().name().parse::<PrimitiveType>().unwrap(), ty);
     let count: u32 = node.parse_required_attribute("count")?;
     let mut vcount = vec![];
@@ -362,7 +371,7 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Pri
 
                 vcount.reserve(count as _);
 
-                let content = node.text().unwrap_or_default();
+                let content = node.trimmed_text();
                 let mut iter = xml::parse_int_array::<u32>(content);
                 for _ in 0..count {
                     let value = iter.next().ok_or_else(|| {
@@ -419,7 +428,7 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Pri
                     p.reserve(expected_count * stride as usize);
 
                     // TODO: It seems some exporters put negative indices sometimes.
-                    for value in xml::parse_int_array(node.text().unwrap_or_default()) {
+                    for value in xml::parse_int_array(node.trimmed_text()) {
                         p.push(value?);
                     }
 
@@ -445,7 +454,7 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Pri
                     let prev_len = p.len();
 
                     // TODO: It seems some exporters put negative indices sometimes.
-                    for value in xml::parse_int_array(node.text().unwrap_or_default()) {
+                    for value in xml::parse_int_array(node.trimmed_text()) {
                         p.push(value?);
                     }
 
@@ -493,9 +502,9 @@ fn parse_primitive(node: xml::Node<'_, '_>, ty: PrimitiveType) -> io::Result<Pri
 
     Ok(Primitive {
         ty,
-        name: node.attribute("name").map(Into::into),
+        // name: node.attribute("name"),
         count,
-        material: node.attribute("material").map(Into::into),
+        material: node.attribute("material"),
         input: input_vertex.map(|vertex| PrimitiveInputs {
             vertex: vertex.cast(),
             normal: input_normal,

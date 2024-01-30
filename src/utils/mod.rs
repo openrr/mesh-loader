@@ -1,6 +1,8 @@
 pub(crate) mod bytes;
 #[cfg(any(feature = "collada", feature = "obj", feature = "stl"))]
 pub mod float;
+#[cfg(feature = "collada")]
+pub(crate) mod hex;
 #[cfg(any(feature = "collada", feature = "obj"))]
 pub mod int;
 #[cfg(feature = "collada")]

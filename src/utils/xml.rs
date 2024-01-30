@@ -1,6 +1,6 @@
 // A module that provides utilities for parsing and visiting XML nodes.
 
-use std::{fmt, io, iter, marker::PhantomData, str::FromStr};
+use std::{borrow::Cow, fmt, io, iter, marker::PhantomData, str::FromStr};
 
 pub(crate) use roxmltree::*;
 
@@ -23,6 +23,16 @@ pub(crate) fn trim_start(s: &str) -> &str {
     s.trim_start_matches(is_whitespace)
 }
 
+// TODO: https://stackoverflow.com/questions/4325363/converting-a-number-with-comma-as-decimal-point-to-float
+#[inline]
+pub(crate) fn comma_to_period(s: &str) -> Cow<'_, str> {
+    if s.as_bytes().contains(&b',') {
+        s.replace(',', ".").into()
+    } else {
+        s.into()
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Parsing array
 
@@ -32,7 +42,7 @@ where
     T: int::Integer,
 {
     ParseIntArray {
-        text: trim_start(text),
+        text,
         _marker: PhantomData,
     }
 }
@@ -69,7 +79,7 @@ where
     T: float::Float,
 {
     ParseFloatArray {
-        text: trim_start(text),
+        text,
         _marker: PhantomData,
     }
 }
@@ -106,7 +116,7 @@ where
     T: float::Float,
 {
     ParseFloatArrayExact {
-        text: trim_start(text),
+        text,
         num,
         count: 0,
         _marker: PhantomData,
@@ -167,6 +177,7 @@ pub(crate) trait XmlNodeExt<'a, 'input> {
     where
         T: FromStr,
         T::Err: fmt::Display;
+    fn trimmed_text(&self) -> &'a str;
     fn node_location(&self) -> TextPos;
     fn attr_location(&self, name: &str) -> TextPos;
 }
@@ -241,6 +252,10 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
                 v
             )
         })
+    }
+
+    fn trimmed_text(&self) -> &'a str {
+        trim(self.text().unwrap_or_default())
     }
 
     #[cold]
