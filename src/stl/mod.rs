@@ -84,6 +84,9 @@ fn is_ascii_stl(mut bytes: &[u8]) -> bool {
     is_ascii
 }
 
+// -----------------------------------------------------------------------------
+// Binary STL
+
 /*
 https://en.wikipedia.org/wiki/STL_(file_format)#Binary_STL
 
@@ -257,6 +260,9 @@ fn read_binary_triangle(mut buf: &[u8]) -> Triangle {
         color,
     }
 }
+
+// -----------------------------------------------------------------------------
+// ASCII STL
 
 /*
 https://en.wikipedia.org/wiki/STL_(file_format)#ASCII_STL
@@ -447,6 +453,9 @@ fn read_ascii_stl(mut s: &[u8], meshes: &mut Vec<Mesh>) -> Result<(), ErrorKind>
 
     Ok(())
 }
+
+// -----------------------------------------------------------------------------
+// Helpers
 
 const __: u8 = 0;
 // [ \r\n\t]

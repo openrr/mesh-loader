@@ -58,6 +58,9 @@ pub fn from_slice<B: AsRef<[u8]>, F: FnMut(&Path) -> io::Result<B>>(
     }
 }
 
+// -----------------------------------------------------------------------------
+// OBJ
+
 fn read_obj(
     mut s: &[u8],
     obj_path: Option<&Path>,
@@ -593,7 +596,6 @@ fn push_vertex(
     Ok(())
 }
 
-#[inline(always)]
 fn push_mesh(
     meshes: &mut Vec<Mesh>,
     faces: &mut Vec<Face>,
@@ -671,6 +673,9 @@ fn push_mesh(
     }
     Ok(())
 }
+
+// -----------------------------------------------------------------------------
+// MTL
 
 // Not public API. (Used for fuzzing.)
 #[doc(hidden)]
@@ -819,93 +824,7 @@ fn read_mtl_internal(
                         if skip_spaces(&mut s) {
                             let (name, s_next) = name(s);
                             if let Some(mat) = mat.replace(Material::default()) {
-                                fn color4(color3: Option<[f32; 3]>) -> Option<Color4> {
-                                    let rgb = color3?;
-                                    // a is 1 by default: https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Obj/ObjFileImporter.cpp#L233
-                                    Some([rgb[0], rgb[1], rgb[2], 1.])
-                                }
-                                fn texture_path(
-                                    texture: Option<&[u8]>,
-                                    mtl_dir: Option<&Path>,
-                                ) -> Option<PathBuf> {
-                                    let mut p = texture?;
-                                    if p.is_empty() {
-                                        return None;
-                                    }
-                                    match mtl_dir {
-                                        Some(mtl_dir) => {
-                                            let tmp: Vec<_>;
-                                            if p.contains(&b'\\') {
-                                                tmp = p
-                                                    .iter()
-                                                    .map(|&b| if b == b'\\' { b'/' } else { b })
-                                                    .collect();
-                                                p = &*tmp;
-                                            }
-                                            if p.starts_with(b"/..") {
-                                                p = p.strip_prefix(b"/").unwrap_or(p);
-                                            }
-                                            let p = path_from_bytes(p).ok()?;
-                                            let p = mtl_dir.join(p);
-                                            if p.exists() {
-                                                Some(p)
-                                            } else {
-                                                None
-                                            }
-                                        }
-                                        None => {
-                                            let p = path_from_bytes(p).ok()?.to_owned();
-                                            Some(p)
-                                        }
-                                    }
-                                }
-                                #[allow(clippy::cast_possible_truncation)]
-                                let material_index = materials.len() as u32;
-                                materials.push(common::Material {
-                                    name: from_utf8_lossy(current_name).into_owned(),
-                                    // Refs: https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Obj/ObjFileImporter.cpp#L591
-                                    shading_model: match mat.illumination_model {
-                                        Some(0) => Some(ShadingModel::NoShading),
-                                        Some(1) => Some(ShadingModel::Gouraud),
-                                        Some(2) => Some(ShadingModel::Phong),
-                                        _ => None,
-                                    },
-                                    shininess: mat.shininess,
-                                    opacity: mat.alpha,
-                                    reflectivity: None,
-                                    index_of_refraction: mat.index_of_refraction,
-                                    // roughness_factor: mat.roughness,
-                                    // metallic_factor: mat.metallic,
-                                    // sheen_color_factor: mat.sheen,
-                                    // clearcoat_factor: mat.clearcoat_thickness,
-                                    // clearcoat_roughness_factor: mat.clearcoat_roughness,
-                                    // anisotropy_factor: mat.anisotropy,
-                                    color: common::Colors {
-                                        ambient: color4(mat.ambient),
-                                        diffuse: color4(mat.diffuse),
-                                        specular: color4(mat.specular),
-                                        emissive: color4(mat.emissive),
-                                        transparent: color4(mat.transparent),
-                                        reflective: None,
-                                    },
-                                    texture: common::Textures {
-                                        diffuse: texture_path(mat.diffuse_texture, mtl_dir),
-                                        ambient: texture_path(mat.ambient_texture, mtl_dir),
-                                        emissive: texture_path(mat.emissive_texture, mtl_dir),
-                                        specular: texture_path(mat.specular_texture, mtl_dir),
-                                        height: texture_path(mat.bump_texture, mtl_dir),
-                                        normal: texture_path(mat.normal_texture, mtl_dir),
-                                        reflection: None, // TODO
-                                        displacement: texture_path(
-                                            mat.displacement_texture,
-                                            mtl_dir,
-                                        ),
-                                        opacity: texture_path(mat.opacity_texture, mtl_dir),
-                                        shininess: texture_path(mat.specularity_texture, mtl_dir),
-                                        lightmap: None,
-                                    },
-                                });
-                                material_map.insert(current_name.to_owned(), material_index);
+                                push_material(materials, material_map, mtl_dir, current_name, &mat);
                             }
                             current_name = name;
                             s = s_next;
@@ -1014,6 +933,10 @@ fn read_mtl_internal(
         }
         // ignore comment or other unknown
         skip_any_until_line(&mut s);
+    }
+
+    if let Some(mat) = &mat {
+        push_material(materials, material_map, mtl_dir, current_name, mat);
     }
 
     Ok(())
@@ -1140,6 +1063,100 @@ fn read_texture<'a>(s: &mut &'a [u8], mat: &mut Option<Material<'a>>) -> bool {
     }
     false
 }
+
+fn push_material(
+    materials: &mut Vec<common::Material>,
+    material_map: &mut HashMap<Vec<u8>, u32>,
+    mtl_dir: Option<&Path>,
+    current_name: &[u8],
+    mat: &Material<'_>,
+) {
+    fn color4(color3: Option<[f32; 3]>) -> Option<Color4> {
+        let rgb = color3?;
+        // a is 1 by default: https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Obj/ObjFileImporter.cpp#L233
+        Some([rgb[0], rgb[1], rgb[2], 1.])
+    }
+    fn texture_path(texture: Option<&[u8]>, mtl_dir: Option<&Path>) -> Option<PathBuf> {
+        let mut p = texture?;
+        if p.is_empty() {
+            return None;
+        }
+        match mtl_dir {
+            Some(mtl_dir) => {
+                let tmp: Vec<_>;
+                if p.contains(&b'\\') {
+                    tmp = p
+                        .iter()
+                        .map(|&b| if b == b'\\' { b'/' } else { b })
+                        .collect();
+                    p = &*tmp;
+                }
+                if p.starts_with(b"/..") {
+                    p = p.strip_prefix(b"/").unwrap_or(p);
+                }
+                p = p.strip_prefix(b"./").unwrap_or(p);
+                let p = path_from_bytes(p).ok()?;
+                let p = mtl_dir.join(p);
+                if p.starts_with("https://") || p.starts_with("http://") || p.exists() {
+                    Some(p)
+                } else {
+                    None
+                }
+            }
+            None => {
+                let p = path_from_bytes(p).ok()?.to_owned();
+                Some(p)
+            }
+        }
+    }
+    #[allow(clippy::cast_possible_truncation)]
+    let material_index = materials.len() as u32;
+    materials.push(common::Material {
+        name: from_utf8_lossy(current_name).into_owned(),
+        // Refs: https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Obj/ObjFileImporter.cpp#L591
+        shading_model: match mat.illumination_model {
+            Some(0) => Some(ShadingModel::NoShading),
+            Some(1) => Some(ShadingModel::Gouraud),
+            Some(2) => Some(ShadingModel::Phong),
+            _ => None,
+        },
+        shininess: mat.shininess,
+        opacity: mat.alpha,
+        reflectivity: None,
+        index_of_refraction: mat.index_of_refraction,
+        // roughness_factor: mat.roughness,
+        // metallic_factor: mat.metallic,
+        // sheen_color_factor: mat.sheen,
+        // clearcoat_factor: mat.clearcoat_thickness,
+        // clearcoat_roughness_factor: mat.clearcoat_roughness,
+        // anisotropy_factor: mat.anisotropy,
+        color: common::Colors {
+            ambient: color4(mat.ambient),
+            diffuse: color4(mat.diffuse),
+            specular: color4(mat.specular),
+            emissive: color4(mat.emissive),
+            transparent: color4(mat.transparent),
+            reflective: None,
+        },
+        texture: common::Textures {
+            diffuse: texture_path(mat.diffuse_texture, mtl_dir),
+            ambient: texture_path(mat.ambient_texture, mtl_dir),
+            emissive: texture_path(mat.emissive_texture, mtl_dir),
+            specular: texture_path(mat.specular_texture, mtl_dir),
+            height: texture_path(mat.bump_texture, mtl_dir),
+            normal: texture_path(mat.normal_texture, mtl_dir),
+            reflection: None, // TODO
+            displacement: texture_path(mat.displacement_texture, mtl_dir),
+            opacity: texture_path(mat.opacity_texture, mtl_dir),
+            shininess: texture_path(mat.specularity_texture, mtl_dir),
+            lightmap: None,
+        },
+    });
+    material_map.insert(current_name.to_owned(), material_index);
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
 
 enum Face {
     Point(#[allow(dead_code)] [[u32; 3]; 1]),
