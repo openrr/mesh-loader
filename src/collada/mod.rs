@@ -3,6 +3,7 @@
 //! [COLLADA]: https://en.wikipedia.org/wiki/COLLADA
 
 #![allow(clippy::wildcard_imports)] // TODO
+#![allow(clippy::many_single_char_names)]
 
 mod effect;
 mod error;
@@ -55,8 +56,8 @@ pub(crate) fn from_slice_internal(bytes: &[u8], path: Option<&Path>) -> io::Resu
 #[inline]
 pub(crate) fn from_str_internal(s: &str, path: Option<&Path>) -> io::Result<common::Scene> {
     let xml = xml::Document::parse(s).map_err(crate::error::invalid_data)?;
-    let collada = Document::parse(&xml)?;
-    Ok(instance::build(&collada, path.and_then(Path::parent)))
+    let mut collada = Document::parse(&xml)?;
+    Ok(instance::build(&mut collada, path.and_then(Path::parent)))
 }
 
 // Inspired by gltf-json's `Get` trait.
@@ -227,6 +228,7 @@ struct Context<'a> {
     library_images: LibraryImages<'a>,
     library_materials: LibraryMaterials<'a>,
     library_visual_scenes: LibraryVisualScenes<'a>,
+    scene: Scene<'a>,
 }
 
 struct Document<'a> {
@@ -236,6 +238,7 @@ struct Document<'a> {
     library_images: LibraryImages<'a>,
     library_materials: LibraryMaterials<'a>,
     library_visual_scenes: LibraryVisualScenes<'a>,
+    scene: Scene<'a>,
 }
 
 impl<'a> Document<'a> {
@@ -296,6 +299,7 @@ impl<'a> Document<'a> {
             library_images: LibraryImages::default(),
             library_materials: LibraryMaterials::default(),
             library_visual_scenes: LibraryVisualScenes::default(),
+            scene: Scene::default(),
         };
 
         for node in node.element_children() {
@@ -318,6 +322,9 @@ impl<'a> Document<'a> {
                 "asset" => {
                     cx.asset = Asset::parse(node)?;
                 }
+                "scene" => {
+                    cx.scene = parse_scene(&mut cx, node)?;
+                }
                 _name => {
                     // debug!("ignored <{}> element", name);
                 }
@@ -331,6 +338,7 @@ impl<'a> Document<'a> {
             library_images: cx.library_images,
             library_materials: cx.library_materials,
             library_visual_scenes: cx.library_visual_scenes,
+            scene: cx.scene,
         })
     }
 
