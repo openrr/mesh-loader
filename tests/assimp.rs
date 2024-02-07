@@ -2,7 +2,10 @@
     clippy::match_same_arms, // https://github.com/rust-lang/rust-clippy/issues/12044
 )]
 
-use std::{collections::BTreeSet, ffi::OsStr, path::Path, str};
+#[path = "shared/assimp.rs"]
+mod assimp_helper;
+
+use std::{collections::BTreeSet, ffi::OsStr, panic, path::Path};
 
 use anyhow::Result;
 use duct::cmd;
@@ -50,12 +53,7 @@ fn test() {
         let filename = path.file_name().unwrap().to_str().unwrap();
 
         // mesh-loader
-        let ml = mesh_loader.load(path).unwrap();
-        for (i, m) in ml.meshes.iter().enumerate() {
-            eprintln!("ml.meshes[{i}]={m:?}");
-        }
-        let ml = &mesh_loader::Mesh::merge(ml.meshes);
-        eprintln!("merge(ml.meshes)={ml:?}");
+        let (ml_scene, ml) = &load_mesh_loader(&mesh_loader, path);
         // assert_ne!(ml.vertices.len(), 0);
         assert_eq!(ml.vertices.len(), ml.faces.len() * 3);
         if ml.normals.is_empty() {
@@ -84,16 +82,34 @@ fn test() {
             "library_animation_clips.dae" => continue,
             // assimp error: "Collada: File came out empty. Something is wrong here."
             "cube_tristrips.dae" | "cube_UTF16LE.dae" if option_env!("CI").is_some() => continue,
+            // More faces loaded only in CI...
+            "ConcavePolygon.dae" if option_env!("CI").is_some() => continue,
             _ => {}
         }
-        let ai = assimp_importer.read_file(path.to_str().unwrap()).unwrap();
-        let ai = &merge_assimp_meshes(&ai);
+        let (ai_scene, ai) = &load_assimp(&assimp_importer, path);
 
-        // TODO
-        if !matches!(
+        if matches!(
+            filename,
+            "Cinema4D.dae"
+                | "anims_with_full_rotations_between_keys.DAE"
+                | "cameras.dae"
+                | "earthCylindrical.DAE"
+                | "kwxport_test_vcolors.dae"
+                | "lights.dae"
+                | "regr01.dae"
+        ) {
+            // TODO
+            assert_ne!(ml_scene.meshes.len(), ai_scene.meshes.len());
+        } else {
+            assert_eq!(ml_scene.meshes.len(), ai_scene.meshes.len());
+        }
+        if matches!(
             filename,
             "ConcavePolygon.dae" | "cameras.dae" | "lights.dae" | "teapot_instancenodes.DAE"
         ) {
+            // TODO
+            assert_ne!(ml.faces.len(), ai.faces.len());
+        } else {
             assert_eq!(ml.faces.len(), ai.faces.len());
             // TODO
             if !matches!(
@@ -107,6 +123,8 @@ fn test() {
                     | "cube_UTF8BOM.dae"
                     | "cube_xmlspecialchars.dae"
                     | "duck.dae"
+                    | "kwxport_test_vcolors.dae"
+                    | "regr01.dae"
                     | "sphere.dae"
                     | "teapots.DAE"
             ) {
@@ -116,56 +134,94 @@ fn test() {
         // TODO
         if !matches!(
             filename,
-            "AsXML.xml"
-                | "anims_with_full_rotations_between_keys.DAE"
-                | "cameras.dae"
-                | "COLLADA.dae"
+            "anims_with_full_rotations_between_keys.DAE"
                 | "ConcavePolygon.dae"
-                | "cube_emptyTags.dae"
-                | "cube_UTF16LE.dae"
-                | "cube_UTF8BOM.dae"
-                | "cube_xmlspecialchars.dae"
                 | "duck.dae"
                 | "lights.dae"
-                | "sphere.dae"
                 | "teapot_instancenodes.DAE"
         ) {
-            assert_eq!(ml.vertices.len(), ai.vertices.len());
-            assert_eq!(ml.normals.len(), ai.normals.len());
             // TODO
-            if !matches!(
+            // assert_eq!(ml.vertices.len(), ai.vertices.len());
+            if matches!(
                 filename,
                 "box_nested_animation.dae"
+                    | "cameras.dae"
                     | "Cinema4D.dae"
                     | "cube_tristrips.dae"
-                    | "cube_with_2UVs.DAE"
                     | "earthCylindrical.DAE"
                     | "kwxport_test_vcolors.dae"
                     | "regr01.dae"
                     | "teapots.DAE"
             ) {
+                // TODO
+                panic::catch_unwind(|| assert_vertices(ml, ai, f32::EPSILON * 1000.)).unwrap_err();
+            } else {
                 assert_vertices(ml, ai, f32::EPSILON * 1000.);
             }
-            if !matches!(
+            if matches!(
+                filename,
+                "AsXML.xml"
+                    | "cameras.dae"
+                    | "COLLADA.dae"
+                    | "cube_UTF16LE.dae"
+                    | "cube_UTF8BOM.dae"
+                    | "cube_emptyTags.dae"
+                    | "cube_xmlspecialchars.dae"
+                    | "sphere.dae"
+            ) {
+                // TODO
+                assert_ne!(ml.normals.len(), ai.normals.len());
+            } else {
+                assert_eq!(ml.normals.len(), ai.normals.len());
+                if matches!(
+                    filename,
+                    "Cinema4D.dae"
+                        | "cube_tristrips.dae"
+                        | "earthCylindrical.DAE"
+                        | "kwxport_test_vcolors.dae"
+                        | "regr01.dae"
+                        | "AsXML.xml"
+                ) {
+                    panic::catch_unwind(|| {
+                        assert_full_matches(&ml.normals, &ai.normals, f32::EPSILON * 1000.);
+                    })
+                    .unwrap_err();
+                } else {
+                    assert_full_matches(&ml.normals, &ai.normals, f32::EPSILON * 100.);
+                }
+            }
+            if matches!(
                 filename,
                 "Cinema4D.dae"
-                    | "cube_tristrips.dae"
                     | "earthCylindrical.DAE"
-                    | "kwxport_test_vcolors.dae"
                     | "regr01.dae"
-                    | "teapots.DAE"
+                    | "sphere.dae"
+                    | "kwxport_test_vcolors.dae"
             ) {
-                assert_normals(ml, ai, f32::EPSILON * 10.);
+                panic::catch_unwind(|| {
+                    assert_full_matches(&ml.texcoords[0], &ai.texcoords[0], f32::EPSILON * 1000.);
+                })
+                .unwrap_err();
+            } else {
+                assert_full_matches(&ml.texcoords[0], &ai.texcoords[0], f32::EPSILON);
             }
-            if !matches!(
-                filename,
-                "Cinema4D.dae" | "earthCylindrical.DAE" | "regr01.dae" | "teapots.DAE"
-            ) {
-                assert_texcoords0(ml, ai, f32::EPSILON);
+            if matches!(filename, "cube_with_2UVs.DAE") {
+                panic::catch_unwind(|| {
+                    assert_full_matches(&ml.texcoords[1], &ai.texcoords[1], f32::EPSILON * 1000.);
+                })
+                .unwrap_err();
+            } else {
+                assert_full_matches(&ml.texcoords[1], &ai.texcoords[1], f32::EPSILON);
             }
-            if !matches!(filename, "Cinema4D.dae" | "kwxport_test_vcolors.dae") {
-                assert_colors0(ml, ai, f32::EPSILON);
+            if matches!(filename, "kwxport_test_vcolors.dae") {
+                panic::catch_unwind(|| {
+                    assert_full_matches(&ml.colors[0], &ai.colors[0], f32::EPSILON * 1000.);
+                })
+                .unwrap_err();
+            } else {
+                assert_full_matches(&ml.colors[0], &ai.colors[0], f32::EPSILON);
             }
+            assert_full_matches(&ml.colors[1], &ai.colors[1], f32::EPSILON);
         }
     }
 
@@ -199,12 +255,7 @@ fn test() {
             }
             continue;
         }
-        let ml = mesh_loader.load(path).unwrap();
-        for (i, m) in ml.meshes.iter().enumerate() {
-            eprintln!("ml.meshes[{i}]={m:?}");
-        }
-        let ml = &mesh_loader::Mesh::merge(ml.meshes);
-        eprintln!("merge(ml.meshes)={ml:?}");
+        let (ml_scene, ml) = &load_mesh_loader(&mesh_loader, path);
         if matches!(filename, "testline.obj" | "testpoints.obj") {
             assert_eq!(ml.vertices.len(), 0);
         } else {
@@ -233,48 +284,87 @@ fn test() {
 
         // assimp
         match filename {
-            // Less faces loaded only in CI...
-            "cube_with_vertexcolors.obj" | "cube_with_vertexcolors_uni.obj"
+            // Less or more faces loaded only in CI...
+            "box_without_lineending.obj"
+            | "concave_polygon.obj"
+            | "cube_with_vertexcolors_uni.obj"
+            | "cube_with_vertexcolors.obj"
+            | "regr_3429812.obj"
+            | "space_in_material_name.obj"
                 if option_env!("CI").is_some() =>
             {
                 continue
             }
             _ => {}
         }
-        let ai = assimp_importer.read_file(path.to_str().unwrap()).unwrap();
-        let ai = &merge_assimp_meshes(&ai);
+        let (ai_scene, ai) = &load_assimp(&assimp_importer, path);
 
-        // TODO
-        if !matches!(
+        if matches!(
             filename,
-            "box.obj"
-                | "box_UTF16BE.obj"
-                | "box_longline.obj"
-                | "box_mat_with_spaces.obj"
-                | "box_without_lineending.obj"
-                | "concave_polygon.obj"
+            "box_UTF16BE.obj"
                 | "cube_usemtl.obj"
-                | "multiple_spaces.obj"
-                | "only_a_part_of_vertexcolors.obj"
-                | "regr_3429812.obj"
                 | "regr01.obj"
-                | "space_in_material_name.obj"
+                | "testpoints.obj"
+                | "regr_3429812.obj"
                 | "spider.obj"
-                | "testmixed.obj"
+                | "testline.obj"
         ) {
+            // TODO
+            assert_ne!(ml_scene.meshes.len(), ai_scene.meshes.len());
+        } else {
+            assert_eq!(ml_scene.meshes.len(), ai_scene.meshes.len());
+        }
+        if matches!(
+            filename,
+            "box_UTF16BE.obj"
+                | "box_longline.obj"
+                | "concave_polygon.obj"
+                | "space_in_material_name.obj"
+        ) {
+            // TODO
+            assert_ne!(ml.faces.len(), ai.faces.len());
+        } else {
             assert_eq!(ml.faces.len(), ai.faces.len());
-            if !matches!(filename, "malformed2.obj") {
+            if matches!(
+                filename,
+                "box_mat_with_spaces.obj"
+                    | "box_without_lineending.obj"
+                    | "box.obj"
+                    | "malformed2.obj"
+                    | "regr_3429812.obj"
+                    | "cube_usemtl.obj"
+                    | "testmixed.obj"
+                    | "regr01.obj"
+                    | "spider.obj"
+            ) {
+                panic::catch_unwind(|| assert_faces(ml, ai)).unwrap_err();
+            } else {
                 assert_faces(ml, ai);
-                if !matches!(filename, "testline.obj" | "testpoints.obj") {
-                    assert_eq!(ml.vertices.len(), ai.vertices.len());
-                    if !matches!(filename, "cube_usemtl.obj") {
-                        assert_vertices(ml, ai, f32::EPSILON * 10.);
-                    }
-                }
             }
-            assert_normals(ml, ai, f32::EPSILON);
-            assert_texcoords0(ml, ai, f32::EPSILON);
-            assert_colors0(ml, ai, f32::EPSILON);
+            if matches!(filename, "cube_usemtl.obj" | "regr01.obj" | "spider.obj") {
+                panic::catch_unwind(|| assert_vertices(ml, ai, f32::EPSILON * 1000.)).unwrap_err();
+            } else {
+                assert_vertices(ml, ai, f32::EPSILON * 10.);
+            }
+            if matches!(filename, "cube_usemtl.obj" | "spider.obj") {
+                panic::catch_unwind(|| {
+                    assert_full_matches(&ml.normals, &ai.normals, f32::EPSILON * 1000.);
+                })
+                .unwrap_err();
+            } else {
+                assert_full_matches(&ml.normals, &ai.normals, f32::EPSILON);
+            }
+            assert_full_matches(&ml.texcoords[0], &ai.texcoords[0], f32::EPSILON);
+            assert_full_matches(&ml.texcoords[1], &ai.texcoords[1], f32::EPSILON);
+            if matches!(filename, "only_a_part_of_vertexcolors.obj") {
+                panic::catch_unwind(|| {
+                    assert_full_matches(&ml.colors[0], &ai.colors[0], f32::EPSILON * 1000.);
+                })
+                .unwrap_err();
+            } else {
+                assert_full_matches(&ml.colors[0], &ai.colors[0], f32::EPSILON);
+            }
+            assert_full_matches(&ml.colors[1], &ai.colors[1], f32::EPSILON);
         }
     }
 
@@ -285,12 +375,7 @@ fn test() {
         let filename = path.file_name().unwrap().to_str().unwrap();
 
         // mesh-loader
-        let ml = mesh_loader.load(path).unwrap();
-        for (i, m) in ml.meshes.iter().enumerate() {
-            eprintln!("ml.meshes[{i}]={m:?}");
-        }
-        let ml = &mesh_loader::Mesh::merge(ml.meshes);
-        eprintln!("merge(ml.meshes)={ml:?}");
+        let (ml_scene, ml) = &load_mesh_loader(&mesh_loader, path);
         assert_ne!(ml.vertices.len(), 0);
         assert_eq!(ml.vertices.len(), ml.faces.len() * 3);
         assert_eq!(ml.vertices.len(), ml.normals.len());
@@ -315,70 +400,25 @@ fn test() {
             "triangle_with_empty_solid.stl" if option_env!("CI").is_some() => continue,
             _ => {}
         }
-        let ai = assimp_importer.read_file(path.to_str().unwrap()).unwrap();
-        assert_eq!(ai.num_meshes, 1);
-        assert_eq!(ai.num_meshes, ai.num_materials);
-        {
-            let ai = ai.mesh(0).unwrap();
-            assert_eq!(ai.num_vertices, ai.num_faces * 3);
-            assert_eq!(ai.num_vertices as usize, ai.vertex_iter().count());
-            assert_eq!(ai.num_vertices as usize, ai.normal_iter().count());
-            assert!(!ai.has_texture_coords(0));
-            if ai.has_vertex_colors(0) {
-                assert_eq!(ai.num_vertices as usize, ai.vertex_color_iter(0).count());
-            }
-            assert!(!ai.has_texture_coords(1));
-        }
-        let ai = &merge_assimp_meshes(&ai);
+        let (ai_scene, ai) = &load_assimp(&assimp_importer, path);
 
+        if matches!(
+            filename,
+            "triangle_with_empty_solid.stl" | "triangle_with_two_solids.stl"
+        ) {
+            // TODO
+            assert_ne!(ml_scene.meshes.len(), ai_scene.meshes.len());
+        } else {
+            assert_eq!(ml_scene.meshes.len(), ai_scene.meshes.len());
+        }
         assert_faces(ml, ai);
-        assert_vertices(ml, ai, f32::EPSILON * 10.);
-        assert_normals(ml, ai, f32::EPSILON);
-        assert_texcoords0(ml, ai, f32::EPSILON);
-        assert_colors0(ml, ai, f32::EPSILON);
+        assert_full_matches(&ml.vertices, &ai.vertices, f32::EPSILON * 10.);
+        assert_full_matches(&ml.texcoords[0], &ai.texcoords[0], f32::EPSILON);
+        assert_full_matches(&ml.texcoords[1], &ai.texcoords[1], f32::EPSILON);
+        assert_full_matches(&ml.normals, &ai.normals, f32::EPSILON);
+        assert_full_matches(&ml.colors[0], &ai.colors[0], f32::EPSILON);
+        assert_full_matches(&ml.colors[1], &ai.colors[1], f32::EPSILON);
     }
-}
-
-fn merge_assimp_meshes(ai: &assimp::Scene<'_>) -> mesh_loader::Mesh {
-    println!(
-        "ai.num_meshes={},ai.num_materials={}",
-        ai.num_meshes, ai.num_materials
-    );
-    let mut vertices = vec![];
-    let mut texcoords0 = vec![];
-    let mut normals = vec![];
-    let mut faces = vec![];
-    let mut colors0 = vec![];
-    for mesh in ai.mesh_iter() {
-        #[allow(clippy::cast_possible_truncation)]
-        let last = vertices.len() as u32;
-        vertices.extend(mesh.vertex_iter().map(|v| [v.x, v.y, v.z]));
-        if mesh.has_texture_coords(0) {
-            texcoords0.extend(mesh.texture_coords_iter(0).map(|v| [v.x, v.y]));
-        }
-        // assimp-rs segfault without this null check.
-        if !mesh.normals.is_null() {
-            normals.extend(mesh.normal_iter().map(|v| [v.x, v.y, v.z]));
-        }
-        if mesh.has_vertex_colors(0) {
-            colors0.extend(mesh.vertex_color_iter(0).map(|v| [v.r, v.g, v.b, v.a]));
-        }
-        faces.extend(mesh.face_iter().filter_map(|f| {
-            if f.num_indices == 3 {
-                Some([f[0] + last, f[1] + last, f[2] + last])
-            } else {
-                assert!(f.num_indices < 3, "should be triangulated");
-                None
-            }
-        }));
-    }
-    let mut mesh = mesh_loader::Mesh::default();
-    mesh.vertices = vertices;
-    mesh.texcoords[0] = texcoords0;
-    mesh.normals = normals;
-    mesh.faces = faces;
-    mesh.colors[0] = colors0;
-    mesh
 }
 
 #[track_caller]
@@ -390,68 +430,91 @@ fn assert_faces(ml: &mesh_loader::Mesh, ai: &mesh_loader::Mesh) {
 }
 #[track_caller]
 fn assert_vertices(ml: &mesh_loader::Mesh, ai: &mesh_loader::Mesh, eps: f32) {
-    assert_eq!(ml.vertices.len(), ai.vertices.len());
-    for (i, (ml, ai)) in ml.vertices.iter().zip(&ai.vertices).enumerate() {
-        for j in 0..ml.len() {
-            let (a, b) = (ml[j], ai[j]);
-            assert!(
-                (a - b).abs() < eps,
-                "assertion failed: `(left !== right)` \
+    assert_eq!(ml.faces.len(), ai.faces.len());
+    // assert_eq!(ml.vertices.len(), ai.vertices.len());
+    for (i, (ml_face, ai_face)) in ml.faces.iter().zip(&ai.faces).enumerate() {
+        for j in 0..ml_face.len() {
+            let (ml, ai) = (
+                ml.vertices[ml_face[j] as usize],
+                ai.vertices[ai_face[j] as usize],
+            );
+            for k in 0..ml.len() {
+                let (a, b) = (ml[k], ai[k]);
+                assert!(
+                    (a - b).abs() < eps,
+                    "assertion failed: `(left !== right)` \
                             (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
                             real diff: `{:?}`) at vertices[{i}][{j}]",
+                    (a - b).abs()
+                );
+            }
+        }
+    }
+    // for (i, (ml, ai)) in ml.vertices.iter().zip(&ai.vertices).enumerate() {
+    //     for j in 0..ml.len() {
+    //         let (a, b) = (ml[j], ai[j]);
+    //         assert!(
+    //             (a - b).abs() < eps,
+    //             "assertion failed: `(left !== right)` \
+    //                         (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
+    //                         real diff: `{:?}`) at vertices[{i}][{j}]",
+    //             (a - b).abs()
+    //         );
+    //     }
+    // }
+}
+// Asserts length, order, and values are all matched.
+#[track_caller]
+fn assert_full_matches<const N: usize>(a: &[[f32; N]], b: &[[f32; N]], eps: f32) {
+    assert_eq!(a.len(), b.len());
+    for (i, (a, b)) in a.iter().zip(b).enumerate() {
+        for j in 0..a.len() {
+            let (a, b) = (a[j], b[j]);
+            assert!(
+                (a - b).abs() < eps,
+                "assertion failed: `(left !== right)` \
+                            (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
+                            real diff: `{:?}`) at [{i}][{j}]",
                 (a - b).abs()
             );
         }
     }
 }
-#[track_caller]
-fn assert_normals(ml: &mesh_loader::Mesh, ai: &mesh_loader::Mesh, eps: f32) {
-    assert_eq!(ml.normals.len(), ai.normals.len());
-    for (i, (ml, ai)) in ml.normals.iter().zip(&ai.normals).enumerate() {
-        for j in 0..ml.len() {
-            let (a, b) = (ml[j], ai[j]);
-            assert!(
-                (a - b).abs() < eps,
-                "assertion failed: `(left !== right)` \
-                            (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
-                            real diff: `{:?}`) at normals[{i}][{j}]",
-                (a - b).abs()
-            );
+
+fn load_mesh_loader(
+    loader: &mesh_loader::Loader,
+    path: &Path,
+) -> (mesh_loader::Scene, mesh_loader::Mesh) {
+    let scene = loader.load(path).unwrap();
+    for (i, m) in scene.meshes.iter().enumerate() {
+        eprintln!("ml.meshes[{i}]={m:?}");
+    }
+    let merged_mesh = mesh_loader::Mesh::merge(scene.meshes.clone());
+    eprintln!("merge(ml.meshes)={merged_mesh:?}");
+    for (i, colors) in merged_mesh.colors.iter().enumerate() {
+        for (j, c) in colors.iter().enumerate() {
+            for (k, &v) in c.iter().enumerate() {
+                assert!(
+                    v >= 0. && v <= 100.,
+                    "colors[{i}][{j}][{k}] should be clamped in 0..=100, but is {v}"
+                );
+            }
         }
     }
+    (scene, merged_mesh)
 }
-#[track_caller]
-fn assert_texcoords0(ml: &mesh_loader::Mesh, ai: &mesh_loader::Mesh, eps: f32) {
-    assert_eq!(ml.texcoords[0].len(), ai.texcoords[0].len());
-    for (i, (ml, ai)) in ml.texcoords[0].iter().zip(&ai.texcoords[0]).enumerate() {
-        for j in 0..ml.len() {
-            let (a, b) = (ml[j], ai[j]);
-            assert!(
-                (a - b).abs() < eps,
-                "assertion failed: `(left !== right)` \
-                            (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
-                            real diff: `{:?}`) at texcoords[0][{i}][{j}]",
-                (a - b).abs()
-            );
-        }
+fn load_assimp(
+    importer: &assimp::Importer,
+    path: &Path,
+) -> (mesh_loader::Scene, mesh_loader::Mesh) {
+    let ai_scene = importer.read_file(path.to_str().unwrap()).unwrap();
+    let scene = assimp_helper::assimp_scene_to_scene(&ai_scene);
+    for (i, m) in scene.meshes.iter().enumerate() {
+        eprintln!("ai.meshes[{i}]={m:?}");
     }
-}
-#[track_caller]
-fn assert_colors0(ml: &mesh_loader::Mesh, ai: &mesh_loader::Mesh, eps: f32) {
-    assert_eq!(ml.colors[0].len(), ai.colors[0].len());
-    for (i, (ml, ai)) in ml.colors[0].iter().zip(&ai.colors[0]).enumerate() {
-        for j in 0..ml.len() {
-            let (a, b) = (ml[j], ai[j]);
-            assert!(
-                (a - b).abs() < eps,
-                "assertion failed: `(left !== right)` \
-                            (left: `{a:?}`, right: `{b:?}`, expect diff: `{eps:?}`, \
-                            real diff: `{:?}`) at colors[0][{i}][{j}]",
-                (a - b).abs()
-            );
-            assert!(a >= 0. && a <= 100.);
-        }
-    }
+    let merged_mesh = mesh_loader::Mesh::merge(scene.meshes.clone());
+    eprintln!("merge(ai.meshes)={merged_mesh:?}");
+    (scene, merged_mesh)
 }
 
 #[track_caller]

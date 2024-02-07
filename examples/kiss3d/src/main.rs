@@ -1,3 +1,6 @@
+#[path = "../../../tests/shared/assimp.rs"]
+mod assimp_helper;
+
 use std::{
     cell::RefCell,
     path::{Path, PathBuf},
@@ -15,6 +18,8 @@ const DEFAULT_SCALE: f32 = 1.;
 struct Args {
     path: PathBuf,
     scale: f32,
+    // debug flag to check the difference between assimp.
+    assimp: bool,
 }
 
 impl Args {
@@ -22,10 +27,12 @@ impl Args {
         let mut parser = lexopt::Parser::from_env();
         let mut path = None;
         let mut scale = None;
+        let mut assimp = false;
         while let Some(arg) = parser.next()? {
             match arg {
                 Value(v) => path = Some(v.into()),
                 Long("scale") => scale = Some(parser.value()?.parse()?),
+                Long("assimp") => assimp = true,
                 Short('h') | Long("help") => {
                     path = None;
                     break;
@@ -43,6 +50,7 @@ impl Args {
         Ok(Self {
             path,
             scale: scale.unwrap_or(DEFAULT_SCALE),
+            assimp,
         })
     }
 }
@@ -55,7 +63,11 @@ fn main() -> Result<()> {
 
     let mut window = Window::new(&format!("{} ー mesh-loader example", args.path.display()));
 
-    let mut base = add_mesh(&mut window, path, scale)?;
+    let mut base = if args.assimp {
+        add_assimp_mesh(&mut window, path, scale)
+    } else {
+        add_mesh(&mut window, path, scale)
+    };
     base.set_local_scale(args.scale, args.scale, args.scale);
 
     base.append_translation(&Translation3::new(0.0, -0.05, -0.2));
@@ -76,10 +88,28 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-fn add_mesh(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> Result<SceneNode> {
-    let mut base = window.add_group();
+fn add_mesh(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> SceneNode {
     let loader = mesh_loader::Loader::default();
-    let scene = loader.load(path)?;
+    let scene = loader.load(path).unwrap();
+    scene_to_kiss3d_scene(window, scene, scale)
+}
+
+fn add_assimp_mesh(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> SceneNode {
+    let mut importer = assimp::Importer::new();
+    importer.pre_transform_vertices(|x| x.enable = true);
+    importer.collada_ignore_up_direction(true);
+    importer.triangulate(true);
+    let ai_scene = importer.read_file(path.to_str().unwrap()).unwrap();
+    let scene = assimp_helper::assimp_scene_to_scene(&ai_scene);
+    scene_to_kiss3d_scene(window, scene, scale)
+}
+
+fn scene_to_kiss3d_scene(
+    window: &mut Window,
+    scene: mesh_loader::Scene,
+    scale: na::Vector3<f32>,
+) -> SceneNode {
+    let mut base = window.add_group();
     assert_eq!(scene.meshes.len(), scene.materials.len());
     for (mesh, material) in scene.meshes.into_iter().zip(scene.materials) {
         eprintln!("mesh={mesh:?}");
@@ -114,5 +144,5 @@ fn add_mesh(window: &mut Window, path: &Path, scale: na::Vector3<f32>) -> Result
             kiss3d_scene.set_texture_from_file(path, path.to_str().unwrap());
         }
     }
-    Ok(base)
+    base
 }

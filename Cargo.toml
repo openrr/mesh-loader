@@ -36,7 +36,7 @@ duct = "0.13"
 fastrand = "2"
 fs-err = "2"
 memmap2 = "0.9"
-quickcheck = { default-features = false, git = "https://github.com/taiki-e/quickcheck.git", branch = "dev" } # https://github.com/BurntSushi/quickcheck/pull/304 + https://github.com/BurntSushi/quickcheck/pull/282 + lower MSRV
+quickcheck = { default-features = false, git = "https://github.com/taiki-e/quickcheck.git", branch = "dev" } # https://github.com/BurntSushi/quickcheck/pull/304 + https://github.com/BurntSushi/quickcheck/pull/282 + https://github.com/BurntSushi/quickcheck/pull/296 + lower MSRV
 walkdir = "2"
 
 [lints]
