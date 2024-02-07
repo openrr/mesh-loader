@@ -1097,7 +1097,10 @@ fn push_material(
                 p = p.strip_prefix(b"./").unwrap_or(p);
                 let p = path_from_bytes(p).ok()?;
                 let p = mtl_dir.join(p);
-                if p.starts_with("https://") || p.starts_with("http://") || p.exists() {
+                if p.to_str().map_or(false, |s| {
+                    s.starts_with("https://") || p.starts_with("http://")
+                }) || p.exists()
+                {
                     Some(p)
                 } else {
                     None
