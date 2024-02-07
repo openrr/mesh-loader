@@ -10,7 +10,7 @@ pub(crate) const MAX_NUMBER_OF_TEXCOORDS: usize = 2;
 // TODO: assimp uses 8 here
 pub(crate) const MAX_NUMBER_OF_COLOR_SETS: usize = 2;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 #[non_exhaustive]
 pub struct Scene {
     pub materials: Vec<Material>,
@@ -18,7 +18,7 @@ pub struct Scene {
 }
 
 /// Triangle mesh
-#[derive(Default)]
+#[derive(Clone, Default)]
 #[non_exhaustive]
 pub struct Mesh {
     pub name: String,
