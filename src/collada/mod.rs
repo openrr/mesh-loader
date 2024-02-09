@@ -145,7 +145,7 @@ impl<T> PartialEq<Uri<'_, T>> for &str {
 
 trait ColladaXmlNodeExt<'a, 'input> {
     fn parse_url<T>(&self, name: &str) -> io::Result<Uri<'a, T>>;
-    fn parse_url_opt<T>(&self, name: &str) -> io::Result<Option<Uri<'a, T>>>;
+    // fn parse_url_opt<T>(&self, name: &str) -> io::Result<Option<Uri<'a, T>>>;
 }
 
 impl<'a, 'input> ColladaXmlNodeExt<'a, 'input> for xml::Node<'a, 'input> {
@@ -162,21 +162,21 @@ impl<'a, 'input> ColladaXmlNodeExt<'a, 'input> for xml::Node<'a, 'input> {
         })
     }
 
-    fn parse_url_opt<T>(&self, name: &str) -> io::Result<Option<Uri<'a, T>>> {
-        if let Some(url) = self.attribute(name) {
-            Uri::parse(url).map(Some).map_err(|e| {
-                format_err!(
-                    "{} in {} attribute of <{}> element at {}",
-                    e,
-                    name,
-                    self.tag_name().name(),
-                    self.attr_location(name),
-                )
-            })
-        } else {
-            Ok(None)
-        }
-    }
+    // fn parse_url_opt<T>(&self, name: &str) -> io::Result<Option<Uri<'a, T>>> {
+    //     if let Some(url) = self.attribute(name) {
+    //         Uri::parse(url).map(Some).map_err(|e| {
+    //             format_err!(
+    //                 "{} in {} attribute of <{}> element at {}",
+    //                 e,
+    //                 name,
+    //                 self.tag_name().name(),
+    //                 self.attr_location(name),
+    //             )
+    //         })
+    //     } else {
+    //         Ok(None)
+    //     }
+    // }
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
