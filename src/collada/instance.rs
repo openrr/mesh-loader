@@ -1,7 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use super::*;
-use crate::{common, ShadingModel};
+use crate::ShadingModel;
 
 pub(super) fn build(doc: &mut Document<'_>, dir: Option<&Path>) -> common::Scene {
     let mut meshes = Vec::with_capacity(doc.library_geometries.geometries.len());
