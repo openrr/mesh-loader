@@ -542,15 +542,16 @@ fn parse_array_element<'a>(node: xml::Node<'a, '_>) -> io::Result<ArrayElement<'
         // TODO: check large count
         let mut values = Vec::with_capacity(count as _);
         let content = xml::comma_to_period(content);
+        // TODO: include in parse_float_array_exact?
+        let map_err = |e| {
+            format_err!(
+                "{e} in <{}> element ({})",
+                node.tag_name().name(),
+                node.text_location(),
+            )
+        };
         for res in xml::parse_float_array_exact(&content, count as _) {
-            let value = res.map_err(|e| {
-                format_err!(
-                    "{} in <{}> element ({})",
-                    e,
-                    node.tag_name().name(),
-                    node.node_location(),
-                )
-            })?;
+            let value = res.map_err(map_err)?;
             values.push(value);
         }
 

@@ -597,84 +597,132 @@ fn parse_node<'a>(
             "lookat" => {
                 let content = xml::comma_to_period(child.trimmed_text());
                 let mut iter = xml::parse_float_array_exact(&content, 9);
+                // TODO: include in parse_float_array_exact?
+                let map_err = |e| {
+                    format_err!(
+                        "{e} in <{}> element ({})",
+                        child.tag_name().name(),
+                        child.text_location(),
+                    )
+                };
                 let t = [
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
                 ];
                 transforms.push(Transform::Lookat(t));
             }
             "matrix" => {
                 let content = xml::comma_to_period(child.trimmed_text());
                 let mut iter = xml::parse_float_array_exact(&content, 16);
+                // TODO: include in parse_float_array_exact?
+                let map_err = |e| {
+                    format_err!(
+                        "{e} in <{}> element ({})",
+                        child.tag_name().name(),
+                        child.text_location(),
+                    )
+                };
                 let t = [
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
                 ];
                 transforms.push(Transform::Matrix(t));
             }
             "rotate" => {
                 let content = xml::comma_to_period(child.trimmed_text());
                 let mut iter = xml::parse_float_array_exact(&content, 4);
+                // TODO: include in parse_float_array_exact?
+                let map_err = |e| {
+                    format_err!(
+                        "{e} in <{}> element ({})",
+                        child.tag_name().name(),
+                        child.text_location(),
+                    )
+                };
                 let t = [
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
                 ];
                 transforms.push(Transform::Rotate(t));
             }
             "scale" => {
                 let content = xml::comma_to_period(child.trimmed_text());
                 let mut iter = xml::parse_float_array_exact(&content, 3);
+                // TODO: include in parse_float_array_exact?
+                let map_err = |e| {
+                    format_err!(
+                        "{e} in <{}> element ({})",
+                        child.tag_name().name(),
+                        child.text_location(),
+                    )
+                };
                 let t = [
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
                 ];
                 transforms.push(Transform::Scale(t));
             }
             "skew" => {
                 let content = xml::comma_to_period(child.trimmed_text());
                 let mut iter = xml::parse_float_array_exact(&content, 7);
+                // TODO: include in parse_float_array_exact?
+                let map_err = |e| {
+                    format_err!(
+                        "{e} in <{}> element ({})",
+                        child.tag_name().name(),
+                        child.text_location(),
+                    )
+                };
                 let t = [
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
                 ];
                 transforms.push(Transform::Skew(t));
             }
             "translate" => {
                 let content = xml::comma_to_period(child.trimmed_text());
                 let mut iter = xml::parse_float_array_exact(&content, 3);
+                // TODO: include in parse_float_array_exact?
+                let map_err = |e| {
+                    format_err!(
+                        "{e} in <{}> element ({})",
+                        child.tag_name().name(),
+                        child.text_location(),
+                    )
+                };
                 let t = [
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
-                    iter.next().unwrap()?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
+                    iter.next().unwrap().map_err(map_err)?,
                 ];
                 transforms.push(Transform::Translate(t));
             }

@@ -376,13 +376,12 @@ fn parse_primitive<'a>(node: xml::Node<'a, '_>, ty: PrimitiveType) -> io::Result
 
                 vcount.reserve(count as _);
 
-                let content = node.trimmed_text();
-                let mut iter = xml::parse_int_array::<u32>(content);
+                // TODO: use parse_int_array_exact?
+                let mut iter = xml::parse_int_array::<u32>(node.trimmed_text());
                 for _ in 0..count {
                     let value = iter.next().ok_or_else(|| {
                         format_err!(
-                            "expected more values while reading <{}> \
-                                 contents at {}",
+                            "expected more values while reading <{}> contents at {}",
                             node.tag_name().name(),
                             node.node_location()
                         )
@@ -433,8 +432,15 @@ fn parse_primitive<'a>(node: xml::Node<'a, '_>, ty: PrimitiveType) -> io::Result
                     p.reserve(expected_count * stride as usize);
 
                     // TODO: It seems some exporters put negative indices sometimes.
+                    // TODO: use parse_int_array_exact?
                     for value in xml::parse_int_array(node.trimmed_text()) {
-                        p.push(value?);
+                        p.push(value.map_err(|e| {
+                            format_err!(
+                                "{e} in <{}> element ({})",
+                                node.tag_name().name(),
+                                node.text_location(),
+                            )
+                        })?);
                     }
 
                     if p.len() != expected_count * stride as usize {
@@ -459,8 +465,15 @@ fn parse_primitive<'a>(node: xml::Node<'a, '_>, ty: PrimitiveType) -> io::Result
                     let prev_len = p.len();
 
                     // TODO: It seems some exporters put negative indices sometimes.
+                    // TODO: use parse_int_array_exact?
                     for value in xml::parse_int_array(node.trimmed_text()) {
-                        p.push(value?);
+                        p.push(value.map_err(|e| {
+                            format_err!(
+                                "{e} in <{}> element ({})",
+                                node.tag_name().name(),
+                                node.text_location(),
+                            )
+                        })?);
                     }
 
                     #[allow(clippy::cast_possible_truncation)]

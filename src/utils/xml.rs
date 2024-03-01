@@ -4,7 +4,7 @@ use std::{borrow::Cow, fmt, io, iter, marker::PhantomData, str::FromStr};
 
 pub(crate) use roxmltree::*;
 
-use super::{float, int};
+use super::{bytes::memchr_naive, float, int};
 
 #[inline]
 #[must_use]
@@ -179,6 +179,7 @@ pub(crate) trait XmlNodeExt<'a, 'input> {
         T::Err: fmt::Display;
     fn trimmed_text(&self) -> &'a str;
     fn node_location(&self) -> TextPos;
+    fn text_location(&self) -> TextPos;
     fn attr_location(&self, name: &str) -> TextPos;
 }
 
@@ -260,10 +261,16 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
 
     #[cold]
     fn node_location(&self) -> TextPos {
-        let range = self.range();
-        self.document().text_pos_at(range.start)
+        let start = self.range().start;
+        self.document().text_pos_at(start)
     }
-
+    #[cold]
+    fn text_location(&self) -> TextPos {
+        let mut start = self.range().start;
+        start += memchr_naive(b'>', self.document().input_text()[start..].as_bytes())
+            .map_or(0, |p| p + 1);
+        self.document().text_pos_at(start)
+    }
     #[cold]
     fn attr_location(&self, name: &str) -> TextPos {
         let start = self.attribute_node(name).unwrap().position();
