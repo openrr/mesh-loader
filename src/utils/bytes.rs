@@ -44,7 +44,7 @@ pub(crate) fn starts_with(mut s: &[u8], mut needle: &'static [u8]) -> bool {
     s.starts_with(needle)
 }
 
-#[cfg(feature = "obj")]
+#[cfg(any(feature = "collada", feature = "obj"))]
 #[inline]
 pub(crate) const fn memchr_naive(needle: u8, mut s: &[u8]) -> Option<usize> {
     let start = s;

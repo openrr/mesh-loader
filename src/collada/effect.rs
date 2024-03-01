@@ -484,11 +484,18 @@ fn parse_effect_color<'a>(
             "color" => {
                 let content = xml::comma_to_period(child.trimmed_text());
                 let mut iter = xml::parse_float_array_exact(&content, 4);
-
-                let r = iter.next().unwrap()?;
-                let g = iter.next().unwrap()?;
-                let b = iter.next().unwrap()?;
-                let a = iter.next().unwrap()?;
+                // TODO: include in parse_float_array_exact?
+                let map_err = |e| {
+                    format_err!(
+                        "{e} in <{}> element ({})",
+                        child.tag_name().name(),
+                        child.text_location(),
+                    )
+                };
+                let r = iter.next().unwrap().map_err(map_err)?;
+                let g = iter.next().unwrap().map_err(map_err)?;
+                let b = iter.next().unwrap().map_err(map_err)?;
+                let a = iter.next().unwrap().map_err(map_err)?;
                 *color = [r, g, b, a];
             }
             "texture" => {
