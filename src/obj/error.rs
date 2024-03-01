@@ -42,12 +42,12 @@ impl fmt::Display for ErrorKind {
             Self::ExpectedSpace(msg, ..) => write!(f, "expected space after {msg}"),
             Self::ExpectedNewline(msg, ..) => write!(f, "expected newline after {msg}"),
             Self::Expected(msg, ..) => write!(f, "expected {msg}"),
-            Self::InvalidW(..) => write!(f, "w in homogeneous vector must not zero"),
-            Self::InvalidFaceIndex(..) => write!(f, "invalid face index"),
-            Self::Float(..) => write!(f, "error while parsing a float"),
-            Self::Int(..) => write!(f, "error while parsing an integer"),
+            Self::InvalidW(..) => f.write_str("w in homogeneous vector must not zero"),
+            Self::InvalidFaceIndex(..) => f.write_str("invalid face index"),
+            Self::Float(..) => f.write_str("error while parsing a float"),
+            Self::Int(..) => f.write_str("error while parsing an integer"),
             Self::Oob(i, ..) => write!(f, "face index out of bounds ({i})"),
-            Self::Io(ref e) => write!(f, "{e}"),
+            Self::Io(ref e) => fmt::Display::fmt(e, f),
         }
     }
 }

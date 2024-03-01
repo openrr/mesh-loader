@@ -42,43 +42,41 @@ impl fmt::Display for ErrorKind {
             // ASCII STL error
             Self::ExpectedSpace(msg, ..) => {
                 if msg == "normal" || msg == "vertex" {
-                    write!(f, "expected space before floats")
+                    f.write_str("expected space before floats")
                 } else {
                     write!(f, "expected space after {msg}")
                 }
             }
             Self::ExpectedNewline(msg, ..) => {
                 if msg == "solid" {
-                    write!(f, "expected newline after solid name")
+                    f.write_str("expected newline after solid name")
                 } else if msg == "normal" || msg == "vertex" {
-                    write!(f, "expected newline after floats")
+                    f.write_str("expected newline after floats")
                 } else {
                     write!(f, "expected newline after {msg}")
                 }
             }
             Self::Expected(msg, remaining) => {
                 if msg == "solid" && remaining != 0 {
-                    write!(f, "expected solid or eof")
+                    f.write_str("expected solid or eof")
                 } else if msg == "endsolid" {
-                    write!(f, "expected facet normal or endsolid")
+                    f.write_str("expected facet normal or endsolid")
                 } else {
                     write!(f, "expected {msg}")
                 }
             }
-            Self::Float(..) => write!(f, "error while parsing a float"),
-            Self::NotAscii(..) => write!(f, "invalid ASCII"),
+            Self::Float(..) => f.write_str("error while parsing a float"),
+            Self::NotAscii(..) => f.write_str("invalid ASCII"),
             // binary STL error
-            Self::TooSmall => write!(
-                f,
+            Self::TooSmall => f.write_str(
                 "failed to determine STL storage representation: \
-                 not valid ASCII STL and size is too small as binary STL"
+                 not valid ASCII STL and size is too small as binary STL",
             ),
-            Self::InvalidSize => write!(
-                f,
+            Self::InvalidSize => f.write_str(
                 "failed to determine STL storage representation: \
-                 not valid ASCII STL and size is invalid as binary STL"
+                 not valid ASCII STL and size is invalid as binary STL",
             ),
-            Self::TooManyTriangles => write!(f, "too many triangles"),
+            Self::TooManyTriangles => f.write_str("too many triangles"),
         }
     }
 }
