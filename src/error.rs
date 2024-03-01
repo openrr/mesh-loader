@@ -64,13 +64,7 @@ impl<'a> Location<'a> {
 impl fmt::Display for Location<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(file) = self.file {
-            write!(
-                f,
-                "{}:{}:{}",
-                file.to_string_lossy(),
-                self.line,
-                self.column
-            )
+            write!(f, "{}:{}:{}", file.display(), self.line, self.column)
         } else {
             write!(f, "{}:{}", self.line, self.column)
         }
