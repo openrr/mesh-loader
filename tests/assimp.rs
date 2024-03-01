@@ -36,7 +36,7 @@ fn test() {
             },
         };
     }
-    assert_eq!(collada_models.len(), 26);
+    assert_eq!(collada_models.len(), 27);
     assert_eq!(obj_models.len(), 26);
     assert_eq!(stl_models.len(), 9);
 
@@ -53,6 +53,19 @@ fn test() {
         let filename = path.file_name().unwrap().to_str().unwrap();
 
         // mesh-loader
+        if path.parent().unwrap().file_name().unwrap() == "invalid" {
+            let _e = mesh_loader.load(path).unwrap_err();
+            // TODO: latest assimp reject this, but old doesn't
+            if matches!(filename, "box_nested_animation_4286.dae") {
+                let _s = assimp_importer.read_file(path.to_str().unwrap()).unwrap();
+            } else {
+                let _e = assimp_importer
+                    .read_file(path.to_str().unwrap())
+                    .err()
+                    .unwrap();
+            }
+            continue;
+        }
         let (ml_scene, ml) = &load_mesh_loader(&mesh_loader, path);
         // assert_ne!(ml.vertices.len(), 0);
         assert_eq!(ml.vertices.len(), ml.faces.len() * 3);
@@ -481,6 +494,7 @@ fn assert_full_matches<const N: usize>(a: &[[f32; N]], b: &[[f32; N]], eps: f32)
     }
 }
 
+#[track_caller]
 fn load_mesh_loader(
     loader: &mesh_loader::Loader,
     path: &Path,
@@ -503,6 +517,7 @@ fn load_mesh_loader(
     }
     (scene, merged_mesh)
 }
+#[track_caller]
 fn load_assimp(
     importer: &assimp::Importer,
     path: &Path,
