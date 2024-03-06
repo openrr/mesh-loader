@@ -679,7 +679,7 @@ fn push_mesh(
 
 // Not public API. (Used for fuzzing.)
 #[doc(hidden)]
-#[allow(clippy::implicit_hasher)]
+#[allow(clippy::implicit_hasher)] // false positive: doc(hidden) function should be treated as private
 pub fn read_mtl(
     bytes: &[u8],
     path: Option<&Path>,

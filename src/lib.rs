@@ -9,6 +9,7 @@
 #![forbid(unsafe_code)]
 #![warn(
     // Lints that may help when writing public library.
+    missing_debug_implementations,
     // missing_docs, // TODO
     clippy::exhaustive_enums,
     clippy::exhaustive_structs,
