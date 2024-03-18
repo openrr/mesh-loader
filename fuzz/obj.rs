@@ -10,7 +10,7 @@ Run with AFL++:
 ```sh
 cd fuzz
 cargo afl build --release --features afl
-cargo afl fuzz -i seeds/obj -o out target/release/obj
+cargo afl fuzz -i seeds/obj -o out/obj target/release/obj
 ```
 */
 
