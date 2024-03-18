@@ -163,10 +163,6 @@ where
 
 pub(crate) trait XmlNodeExt<'a, 'input> {
     fn element_children(&self) -> ElementChildren<'a, 'input>;
-    // fn matches_children<'b>(
-    //     &self,
-    //     name: &'b str,
-    // ) -> MatchesChildren<'a, 'b, 'input>;
     fn child(&self, name: &str) -> Option<Node<'a, 'input>>;
     fn required_attribute(&self, name: &str) -> io::Result<&'a str>;
     fn parse_attribute<T>(&self, name: &str) -> io::Result<Option<T>>
@@ -188,13 +184,6 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
         self.children()
             .filter(|n| n.node_type() == NodeType::Element)
     }
-
-    // fn matches_children<'b>(
-    //     &self,
-    //     name: &'b str,
-    // ) -> MatchesChildren<'a, 'b, 'input> {
-    //     MatchesChildren { iter: self.children(), name }
-    // }
 
     fn child(&self, name: &str) -> Option<Node<'a, 'input>> {
         self.element_children()
@@ -280,17 +269,3 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
 
 pub(crate) type ElementChildren<'a, 'input> =
     iter::Filter<Children<'a, 'input>, fn(&Node<'a, 'input>) -> bool>;
-
-pub(crate) struct MatchesChildren<'a, 'b, 'input> {
-    iter: Children<'a, 'input>,
-    name: &'b str,
-}
-
-impl<'a, 'input> Iterator for MatchesChildren<'a, '_, 'input> {
-    type Item = Node<'a, 'input>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.iter
-            .find(|&n| n.is_element() && n.has_tag_name(self.name))
-    }
-}
