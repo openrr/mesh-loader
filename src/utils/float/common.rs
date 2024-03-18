@@ -14,6 +14,7 @@ pub(crate) trait ByteSlice {
     /// Iteratively parse and consume digits from bytes.
     /// Returns the same bytes with consumed digits being
     /// elided.
+    #[allow(clippy::impl_trait_in_params)] // clippy bug: should not warn method of private trait
     fn parse_digits(&self, func: impl FnMut(u8)) -> &Self;
 }
 
