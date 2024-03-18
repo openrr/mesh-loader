@@ -114,7 +114,7 @@ impl<B: AsRef<[u8]>> Loader<B> {
     }
     pub fn load_from_slice_with_reader<P: AsRef<Path>, F: FnMut(&Path) -> io::Result<B>>(
         &self,
-        #[allow(unused_variables)] bytes: &[u8],
+        bytes: &[u8],
         path: P,
         #[allow(unused_variables)] reader: F,
     ) -> io::Result<Scene> {
