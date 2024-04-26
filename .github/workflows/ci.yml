@@ -77,7 +77,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@nightly
-      - uses: taiki-e/cache-cargo-install-action@v1
+      - uses: taiki-e/cache-cargo-install-action@v2
         with:
           tool: cargo-fuzz
       # We cannot use cache for cargo-afl because afl.rs requires the cargo-afl binary and afl library to be built with the same compiler version.
