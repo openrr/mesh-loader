@@ -609,6 +609,7 @@ impl FromStl for Mesh {
         mesh.faces.push(vertices_indices);
     }
 
+    #[allow(clippy::assigning_clones)] // https://github.com/rust-lang/rust-clippy/issues/12502
     fn set_name(mesh: &mut Self::Context, name: &str) {
         mesh.name = name.to_owned();
     }
