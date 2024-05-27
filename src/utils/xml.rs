@@ -176,7 +176,7 @@ pub(crate) trait XmlNodeExt<'a, 'input> {
     fn trimmed_text(&self) -> &'a str;
     fn node_location(&self) -> TextPos;
     fn text_location(&self) -> TextPos;
-    fn attr_location(&self, name: &str) -> TextPos;
+    fn attr_value_location(&self, name: &str) -> TextPos;
 }
 
 impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
@@ -219,7 +219,7 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
                     "{} in <{}> element at {}: {:?}",
                     e,
                     self.tag_name().name(),
-                    self.attr_location(name),
+                    self.attr_value_location(name),
                     v
                 )
             })?)),
@@ -238,7 +238,7 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
                 "{} in <{}> element at {}: {:?}",
                 e,
                 self.tag_name().name(),
-                self.attr_location(name),
+                self.attr_value_location(name),
                 v
             )
         })
@@ -261,8 +261,8 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
         self.document().text_pos_at(start)
     }
     #[cold]
-    fn attr_location(&self, name: &str) -> TextPos {
-        let start = self.attribute_node(name).unwrap().position();
+    fn attr_value_location(&self, name: &str) -> TextPos {
+        let start = self.attribute_node(name).unwrap().range_value().start;
         self.document().text_pos_at(start)
     }
 }

@@ -157,7 +157,7 @@ impl<'a, 'input> ColladaXmlNodeExt<'a, 'input> for xml::Node<'a, 'input> {
                 e,
                 name,
                 self.tag_name().name(),
-                self.attr_location(name),
+                self.attr_value_location(name),
             )
         })
     }
@@ -170,7 +170,7 @@ impl<'a, 'input> ColladaXmlNodeExt<'a, 'input> for xml::Node<'a, 'input> {
     //                 e,
     //                 name,
     //                 self.tag_name().name(),
-    //                 self.attr_location(name),
+    //                 self.attr_value_location(name),
     //             )
     //         })
     //     } else {
@@ -385,7 +385,7 @@ impl Asset {
                                 "{} in <{}> element at {}: {:?}",
                                 e,
                                 child.tag_name().name(),
-                                child.attr_location("meter"),
+                                child.attr_value_location("meter"),
                                 v
                             )
                         })?);
