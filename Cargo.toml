@@ -44,6 +44,7 @@ workspace = true
 [workspace]
 resolver = "2"
 members = [
+    "examples/bevy",
     "examples/kiss3d",
 ]
 
