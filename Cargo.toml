@@ -30,7 +30,6 @@ obj = []
 roxmltree = { version = "0.20", optional = true }
 
 [dev-dependencies]
-anyhow = "1"
 assimp = "0.3"
 duct = "0.13"
 fastrand = "2"

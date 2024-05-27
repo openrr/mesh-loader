@@ -7,7 +7,6 @@ mod assimp_helper;
 
 use std::{collections::BTreeSet, ffi::OsStr, panic, path::Path};
 
-use anyhow::Result;
 use duct::cmd;
 use fs_err as fs;
 use walkdir::WalkDir;
@@ -17,7 +16,7 @@ fn test() {
     let manifest_dir = Path::new(env!("CARGO_MANIFEST_DIR"));
     let assimp_dir = &manifest_dir.join("tests/fixtures/assimp");
 
-    clone(assimp_dir, "assimp/assimp", &["/test/models/"]).unwrap();
+    clone(assimp_dir, "assimp/assimp", &["/test/models/"]);
     let models = &assimp_dir.join("test/models");
 
     let mut collada_models = BTreeSet::new();
@@ -57,7 +56,7 @@ fn test() {
             let _e = mesh_loader.load(path).unwrap_err();
             // TODO: latest assimp reject this, but old doesn't
             if matches!(filename, "box_nested_animation_4286.dae") {
-                let _s = assimp_importer.read_file(path.to_str().unwrap()).unwrap();
+                let _res = assimp_importer.read_file(path.to_str().unwrap());
             } else {
                 let _e = assimp_importer
                     .read_file(path.to_str().unwrap())
@@ -533,7 +532,7 @@ fn load_assimp(
 }
 
 #[track_caller]
-fn clone(src_dir: &Path, repository: &str, sparse_checkout: &[&str]) -> Result<()> {
+fn clone(src_dir: &Path, repository: &str, sparse_checkout: &[&str]) {
     assert!(!repository.is_empty());
     assert!(!sparse_checkout.is_empty());
     let name = repository.strip_suffix(".git").unwrap_or(repository);
@@ -544,7 +543,7 @@ fn clone(src_dir: &Path, repository: &str, sparse_checkout: &[&str]) -> Result<(
         format!("https://github.com/{repository}.git")
     };
     if !src_dir.exists() {
-        fs::create_dir_all(src_dir.parent().unwrap())?;
+        fs::create_dir_all(src_dir.parent().unwrap()).unwrap();
         cmd!(
             "git",
             "clone",
@@ -555,24 +554,30 @@ fn clone(src_dir: &Path, repository: &str, sparse_checkout: &[&str]) -> Result<(
             repository,
             &src_dir,
         )
-        .run()?;
+        .run()
+        .unwrap();
     }
-    cmd!("git", "sparse-checkout", "init").dir(src_dir).run()?;
+    cmd!("git", "sparse-checkout", "init")
+        .dir(src_dir)
+        .run()
+        .unwrap();
     let mut out = String::from("/*\n!/*/\n"); // always download top-level files
     out.push_str(&sparse_checkout.join("\n"));
-    fs::write(src_dir.join(".git/info/sparse-checkout"), out)?;
+    fs::write(src_dir.join(".git/info/sparse-checkout"), out).unwrap();
     cmd!("git", "checkout")
         .dir(src_dir)
         .stdout_capture()
-        .run()?;
+        .run()
+        .unwrap();
     cmd!("git", "clean", "-df")
         .dir(src_dir)
         .stdout_capture()
-        .run()?;
+        .run()
+        .unwrap();
     // TODO: use stash?
     cmd!("git", "checkout", ".")
         .dir(src_dir)
         .stderr_capture()
-        .run()?;
-    Ok(())
+        .run()
+        .unwrap();
 }
