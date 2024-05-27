@@ -5,6 +5,7 @@ bitangent
 blinn
 brep
 bytecount
+cfgs
 clearcoat
 collada
 ctypes
@@ -39,6 +40,7 @@ nalgebra
 newmtl
 newparam
 NMTOKEN
+nonminimal
 OKINO
 phong
 pipefail
