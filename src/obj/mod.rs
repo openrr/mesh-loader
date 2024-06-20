@@ -126,7 +126,7 @@ fn read_obj(
             }
             b'u' => {
                 s = s_next;
-                if token(&mut s, &"usemtl".as_bytes()[1..]) {
+                if token(&mut s, &b"usemtl"[1..]) {
                     if skip_spaces(&mut s) {
                         let (name, s_next) = name(s);
                         if name != current_material {
@@ -150,7 +150,7 @@ fn read_obj(
             }
             b'm' => {
                 s = s_next;
-                if token(&mut s, &"mtllib".as_bytes()[1..]) {
+                if token(&mut s, &b"mtllib"[1..]) {
                     if skip_spaces(&mut s) {
                         let (path, s_next) = name(s);
                         let path = if path.is_empty() {
