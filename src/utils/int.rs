@@ -2,7 +2,11 @@
 //
 // Source: https://github.com/fastfloat/fast_float/blob/68b9475585be0839fa0bf3d6bfad3e4a6357d90a/include/fast_float/ascii_number.h#L445
 
-#![allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#![allow(
+    clippy::cast_possible_truncation,
+    clippy::cast_possible_wrap,
+    clippy::cast_sign_loss
+)]
 
 use self::integer::RawInteger;
 use crate::utils::float::{common::ByteSlice, parse::try_parse_digits};
@@ -158,7 +162,7 @@ fn parse_partial_number(
         try_parse_digits(&mut s, &mut v);
     } else {
         s = s.parse_digits(|digit| {
-            v = v.wrapping_mul(10).wrapping_add(digit as _);
+            v = v.wrapping_mul(10).wrapping_add(digit as u64);
         });
     }
     let n_digits = s.offset_from(digits_start) as usize;
@@ -178,7 +182,7 @@ fn parse_partial_number(
         return None;
     }
 
-    let len = s.offset_from(full_start) as _;
+    let len = s.offset_from(full_start) as usize;
     Some((v, len))
 }
 

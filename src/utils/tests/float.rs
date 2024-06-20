@@ -5,7 +5,7 @@ fn leading_str() -> String {
         "+".to_owned()
     } else {
         String::new()
-    }) + &"0".repeat(fastrand::u8(..) as _)
+    }) + &"0".repeat(fastrand::u8(..) as usize)
 }
 
 // Asserts that `$a` and `$b` have performed equivalent operations.

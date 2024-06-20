@@ -56,9 +56,9 @@ impl Number {
                 // normal fast path
                 let value = F::from_u64(self.mantissa);
                 if self.exponent < 0 {
-                    value / F::pow10_fast_path((-self.exponent) as _)
+                    value / F::pow10_fast_path((-self.exponent) as usize)
                 } else {
-                    value * F::pow10_fast_path(self.exponent as _)
+                    value * F::pow10_fast_path(self.exponent as usize)
                 }
             } else {
                 // disguised fast path
@@ -67,7 +67,7 @@ impl Number {
                 if mantissa > F::MAX_MANTISSA_FAST_PATH {
                     return None;
                 }
-                F::from_u64(mantissa) * F::pow10_fast_path(F::MAX_EXPONENT_FAST_PATH as _)
+                F::from_u64(mantissa) * F::pow10_fast_path(F::MAX_EXPONENT_FAST_PATH as usize)
             };
             if self.negative {
                 value = -value;

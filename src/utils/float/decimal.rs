@@ -344,7 +344,7 @@ fn number_of_digits_decimal_left_shift(d: &Decimal, mut shift: usize) -> usize {
     shift &= 63;
     let x_a = TABLE[shift];
     let x_b = TABLE[shift + 1];
-    let num_new_digits = (x_a >> 11) as _;
+    let num_new_digits = (x_a >> 11) as usize;
     let pow5_a = (0x7FF & x_a) as usize;
     let pow5_b = (0x7FF & x_b) as usize;
     let pow5 = &TABLE_POW5[pow5_a..];
