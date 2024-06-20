@@ -75,7 +75,7 @@ pub(super) fn parse_library_images<'a>(
     Ok(())
 }
 
-fn parse_image<'a>(cx: &mut Context<'a>, node: xml::Node<'a, '_>) -> io::Result<Image<'a>> {
+fn parse_image<'a>(cx: &Context<'a>, node: xml::Node<'a, '_>) -> io::Result<Image<'a>> {
     debug_assert_eq!(node.tag_name().name(), "image");
     let id = node.required_attribute("id")?;
     // let name = node.attribute("name");
