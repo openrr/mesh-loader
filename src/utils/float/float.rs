@@ -95,7 +95,7 @@ impl RawFloat for f32 {
     #[inline]
     fn from_u64(v: u64) -> Self {
         debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-        v as _
+        v as f32
     }
 
     #[inline]
@@ -133,7 +133,7 @@ impl RawFloat for f64 {
     #[inline]
     fn from_u64(v: u64) -> Self {
         debug_assert!(v <= Self::MAX_MANTISSA_FAST_PATH);
-        v as _
+        v as f64
     }
 
     #[inline]

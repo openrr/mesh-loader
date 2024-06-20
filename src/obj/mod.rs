@@ -402,9 +402,9 @@ fn read_f(
             )]
             Some(i) => {
                 idx[0] = if i < 0 {
-                    (vertices.len() as isize + i as isize) as _
+                    (vertices.len() as isize + i as isize) as u32
                 } else {
-                    (i - 1) as _
+                    (i - 1) as u32
                 }
             }
             None => return Err(ErrorKind::Int(s.len() + !s.is_empty() as usize + f.len())),
@@ -428,9 +428,9 @@ fn read_f(
                 )]
                 Some(i) => {
                     idx[1] = if i < 0 {
-                        (texcoords.len() as isize + i as isize) as _
+                        (texcoords.len() as isize + i as isize) as u32
                     } else {
-                        (i - 1) as _
+                        (i - 1) as u32
                     }
                 }
                 None => return Err(ErrorKind::Int(s.len() + !s.is_empty() as usize + f.len())),
@@ -446,9 +446,9 @@ fn read_f(
                 )]
                 Some(i) => {
                     idx[2] = if i < 0 {
-                        (normals.len() as isize + i as isize) as _
+                        (normals.len() as isize + i as isize) as u32
                     } else {
-                        (i - 1) as _
+                        (i - 1) as u32
                     }
                 }
                 None => return Err(ErrorKind::Int(s.len() + !s.is_empty() as usize + f.len())),

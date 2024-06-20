@@ -510,7 +510,7 @@ fn parse_array_element<'a>(node: xml::Node<'a, '_>) -> io::Result<ArrayElement<'
 
     if is_string_array {
         // TODO: check large count
-        let mut values = Vec::with_capacity(count as _);
+        let mut values = Vec::with_capacity(count as usize);
         for _ in 0..count {
             if content.is_empty() {
                 bail!(
@@ -540,7 +540,7 @@ fn parse_array_element<'a>(node: xml::Node<'a, '_>) -> io::Result<ArrayElement<'
         })
     } else {
         // TODO: check large count
-        let mut values = Vec::with_capacity(count as _);
+        let mut values = Vec::with_capacity(count as usize);
         let content = xml::comma_to_period(content);
         // TODO: include in parse_float_array_exact?
         let map_err = |e| {
@@ -550,7 +550,7 @@ fn parse_array_element<'a>(node: xml::Node<'a, '_>) -> io::Result<ArrayElement<'
                 node.text_location(),
             )
         };
-        for res in xml::parse_float_array_exact(&content, count as _) {
+        for res in xml::parse_float_array_exact(&content, count as usize) {
             let value = res.map_err(map_err)?;
             values.push(value);
         }

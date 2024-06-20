@@ -374,7 +374,7 @@ fn parse_primitive<'a>(node: xml::Node<'a, '_>, ty: PrimitiveType) -> io::Result
                     continue;
                 }
 
-                vcount.reserve(count as _);
+                vcount.reserve(count as usize);
 
                 // TODO: use parse_int_array_exact?
                 let mut iter = xml::parse_int_array::<u32>(node.trimmed_text());
@@ -459,7 +459,7 @@ fn parse_primitive<'a>(node: xml::Node<'a, '_>, ty: PrimitiveType) -> io::Result
                     // See the description of the `Primitive::vcount` field for more information.
 
                     if vcount.capacity() == 0 {
-                        vcount.reserve(count as _);
+                        vcount.reserve(count as usize);
                     }
 
                     let prev_len = p.len();

@@ -67,7 +67,7 @@ impl<'a> Primitive<'a> {
                 return Positions(None);
             }
             assert!((acc.count * acc.stride) as usize <= data.len());
-            Positions(Some((acc.count, data.chunks(acc.stride as _))))
+            Positions(Some((acc.count, data.chunks(acc.stride as usize))))
         } else {
             // TODO: search other mesh's vertices
             todo!()
@@ -99,7 +99,7 @@ impl<'a> Primitive<'a> {
             return Positions(None);
         }
         assert!((acc.count * acc.stride) as usize <= data.len());
-        Positions(Some((acc.count, data.chunks(acc.stride as _))))
+        Positions(Some((acc.count, data.chunks(acc.stride as usize))))
     }
 
     pub(super) fn texcoords(&self, set: usize) -> Texcoords<'a> {
@@ -131,7 +131,7 @@ impl<'a> Primitive<'a> {
         }
         assert!((acc.count * acc.stride) as usize <= data.len());
         Texcoords(Some(TexcoordsInner {
-            iter: data.chunks(acc.stride as _),
+            iter: data.chunks(acc.stride as usize),
         }))
     }
 
@@ -160,7 +160,7 @@ impl<'a> Primitive<'a> {
             return Positions(None);
         }
         assert!((acc.count * acc.stride) as usize <= data.len());
-        Positions(Some((acc.count, data.chunks(acc.stride as _))))
+        Positions(Some((acc.count, data.chunks(acc.stride as usize))))
     }
 
     fn vertex_indices_inner(&self, offset: u32) -> IndicesInner<'a> {
@@ -176,7 +176,7 @@ impl<'a> Primitive<'a> {
             },
             ast::PrimitiveType::Triangles => IndicesInner::Triangles {
                 offset,
-                indices: self.xml.p.chunks(self.xml.stride as _),
+                indices: self.xml.p.chunks(self.xml.stride as usize),
             },
             ast::PrimitiveType::TriStrips | ast::PrimitiveType::TriFans => {
                 IndicesInner::TriStrips {

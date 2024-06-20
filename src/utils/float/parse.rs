@@ -42,7 +42,7 @@ pub(crate) fn try_parse_digits(s: &mut &[u8], x: &mut u64) {
     }
 
     *s = s.parse_digits(|digit| {
-        *x = x.wrapping_mul(10).wrapping_add(digit as _);
+        *x = x.wrapping_mul(10).wrapping_add(digit as u64);
     });
 }
 
@@ -138,7 +138,7 @@ pub(crate) fn parse_partial_number(mut s: &[u8], full_start: &[u8]) -> Option<(N
         }
     }
 
-    let len = s.offset_from(full_start) as _;
+    let len = s.offset_from(full_start) as usize;
 
     // handle uncommon case with many digits
     if n_digits <= 19 {
