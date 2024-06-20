@@ -134,7 +134,7 @@ impl Transform {
                     }
                 }
                 Self::Rotate(f) => {
-                    let angle = f[3] * std::f32::consts::PI / 180.;
+                    let angle = f[3].to_radians();
                     let axis = [f[0], f[1], f[2]];
                     let m = Matrix4x4::rotation(angle, axis);
                     match &mut out {
