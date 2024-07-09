@@ -372,7 +372,7 @@ fn read_f(
     };
     while !f.is_empty() {
         let mut w;
-        let f_next = match memchr_naive_table(WS_NO_LINE, &TABLE, f) {
+        let f_next = match memchr_naive_table(SPACE, &TABLE, f) {
             Some(n) => {
                 w = &f[..n];
                 &f[n + 1..]
@@ -1208,13 +1208,13 @@ struct Material<'a> {
 
 const __: u8 = 0;
 // [ \r\n\t]
-const WS: u8 = 1 << 0;
+const WHITESPACE: u8 = 1 << 0;
 // [ \t]
-const WS_NO_LINE: u8 = 1 << 1;
+const SPACE: u8 = 1 << 1;
 // [\r\n]
 const LINE: u8 = 1 << 2;
-const LN: u8 = WS | LINE;
-const NL: u8 = WS | WS_NO_LINE;
+const LN: u8 = WHITESPACE | LINE;
+const NL: u8 = WHITESPACE | SPACE;
 
 static TABLE: [u8; 256] = [
     //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
@@ -1235,16 +1235,26 @@ static TABLE: [u8; 256] = [
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
     __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
 ];
+#[test]
+fn table() {
+    for n in 0..=u8::MAX {
+        match n {
+            b' ' | b'\t' => assert_eq!(TABLE[n as usize], WHITESPACE | SPACE, "{}", n as char),
+            b'\r' | b'\n' => assert_eq!(TABLE[n as usize], WHITESPACE | LINE, "{}", n as char),
+            _ => assert_eq!(TABLE[n as usize], __, "{}", n as char),
+        }
+    }
+}
 
 #[inline]
 fn skip_whitespace_until_byte_or_eof(s: &mut &[u8], byte_mask: u8, whitespace_mask: u8) -> bool {
     while let Some((&b, s_next)) = s.split_first() {
-        let b = TABLE[b as usize];
-        if b & byte_mask != 0 {
+        let t = TABLE[b as usize];
+        if t & byte_mask != 0 {
             *s = s_next;
             break;
         }
-        if b & whitespace_mask != 0 {
+        if t & whitespace_mask != 0 {
             *s = s_next;
             continue;
         }
@@ -1263,15 +1273,16 @@ fn skip_whitespace_until_byte_or_eof(s: &mut &[u8], byte_mask: u8, whitespace_ma
 
 #[inline]
 fn skip_spaces_until_line(s: &mut &[u8]) -> bool {
-    skip_whitespace_until_byte_or_eof(s, LINE, WS_NO_LINE)
+    skip_whitespace_until_byte_or_eof(s, LINE, SPACE)
 }
 
+/// Skips spaces or tabs, and returns `true` if one or more spaces or tabs are
+/// present. (not consumes non-{space,tab} characters.
 #[inline]
 fn skip_spaces(s: &mut &[u8]) -> bool {
     let start = *s;
     while let Some((&b, s_next)) = s.split_first() {
-        let b = TABLE[b as usize];
-        if b & WS_NO_LINE != 0 {
+        if TABLE[b as usize] & SPACE != 0 {
             *s = s_next;
             continue;
         }
@@ -1288,24 +1299,24 @@ fn skip_spaces(s: &mut &[u8]) -> bool {
     start.len() != s.len()
 }
 
+/// Skips non-line (non-`[\r\n]`) characters. (consumes line character).
 #[inline]
 fn skip_any_until_line(s: &mut &[u8]) {
-    loop {
-        match memchr_naive_table(LINE, &TABLE, s) {
-            Some(n) => {
-                if s.get(n.wrapping_sub(1)) == Some(&b'\\') {
-                    if s[n..].starts_with(b"\r\n") {
-                        *s = &s[n + 2..];
-                    } else {
-                        *s = &s[n + 1..];
-                    }
-                    continue;
-                }
-                *s = &s[n + 1..];
-            }
-            None => *s = &[],
+    while let Some((&b, s_next)) = s.split_first() {
+        if TABLE[b as usize] & LINE != 0 {
+            *s = s_next;
+            break;
         }
-        break;
+        if b == b'\\' && matches!(s_next.first(), Some(b'\n' | b'\r')) {
+            if s_next.starts_with(b"\r\n") {
+                *s = &s_next[2..];
+            } else {
+                *s = &s_next[1..];
+            }
+            continue;
+        }
+        *s = s_next;
+        continue;
     }
 }
 
@@ -1319,26 +1330,18 @@ fn token(s: &mut &[u8], token: &'static [u8]) -> bool {
     }
 }
 
-fn name(s: &[u8]) -> (&[u8], &[u8]) {
-    let mut name;
-    let s_next = match memchr_naive_table(LINE, &TABLE, s) {
-        Some(n) => {
-            name = &s[..n];
-            &s[n + 1..]
-        }
-        None => {
-            name = s;
-            &[]
-        }
-    };
+fn name(mut s: &[u8]) -> (&[u8], &[u8]) {
+    let start = s;
+    skip_any_until_line(&mut s);
+    let mut name = &start[..start.len() - s.len()];
     // Allow spaces in middle, trim end
     // https://github.com/assimp/assimp/commit/c84a14a7a8ae4329114269a0ffc1921c838eda9e
     while let Some((&b, name_next)) = name.split_last() {
-        if TABLE[b as usize] & WS != 0 {
+        if TABLE[b as usize] & WHITESPACE != 0 {
             name = name_next;
             continue;
         }
         break;
     }
-    (name, s_next)
+    (name, s)
 }
