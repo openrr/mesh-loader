@@ -38,8 +38,8 @@ pub(crate) fn starts_with(mut s: &[u8], mut needle: &'static [u8]) -> bool {
         {
             return false;
         }
-        needle = &needle[..8];
-        s = &s[..8];
+        needle = &needle[8..];
+        s = &s[8..];
     }
     s.starts_with(needle)
 }
