@@ -88,8 +88,8 @@ static ENCODE_UPPER_TABLE: &[u8; 16] = b"0123456789ABCDEF";
 #[cfg(test)]
 #[inline]
 const fn byte2hex(byte: u8, table: &[u8; 16]) -> [u8; 2] {
-    let upper = table[((byte & 0xf0) >> 4) as usize];
-    let lower = table[(byte & 0x0f) as usize];
+    let upper = table[((byte & 0xF0) >> 4) as usize];
+    let lower = table[(byte & 0x0F) as usize];
     [upper, lower]
 }
 
