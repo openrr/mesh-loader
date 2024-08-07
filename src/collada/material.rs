@@ -41,7 +41,7 @@ pub(super) struct InstanceEffect<'a> {
     pub(super) url: Uri<'a, Effect<'a>>,
 }
 
-// =============================================================================
+// -----------------------------------------------------------------------------
 // Parsing
 
 pub(super) fn parse_library_materials<'a>(
