@@ -457,18 +457,15 @@ fn read_ascii_stl(mut s: &[u8], meshes: &mut Vec<Mesh>) -> Result<(), ErrorKind>
 // -----------------------------------------------------------------------------
 // Helpers
 
-const __: u8 = 0;
 // [ \r\n\t]
 // Note: Unlike is_ascii_whitespace, FORM FEED ('\x0C') is not included.
 // https://en.wikipedia.org/wiki/STL_(file_format)#ASCII
 // > Whitespace (spaces, tabs, newlines) may be used anywhere in the file except within numbers or words.
-const WS: u8 = SPACE | LINE;
-// [ \t]
-const SPACE: u8 = 1 << 0;
+const WHITESPACE: u8 = SPACE | LINE;
 // [\r\n]
-const LINE: u8 = 1 << 1;
-const LN: u8 = LINE;
-const NL: u8 = SPACE;
+const LINE: u8 = 1 << 0;
+// [ \t]
+const SPACE: u8 = 1 << 1;
 // [s]
 const S_: u8 = 1 << 2;
 // [e]
@@ -480,25 +477,59 @@ const O_: u8 = 1 << 5;
 // [v]
 const V_: u8 = 1 << 6;
 
-static TABLE: [u8; 256] = [
-    //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
-    __, __, __, __, __, __, __, __, __, NL, LN, __, __, LN, __, __, // 0
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 1
-    NL, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 3
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 4
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 5
-    __, __, __, __, __, E_, F_, __, __, __, __, __, __, __, __, O_, // 6
-    __, __, __, S_, __, __, V_, __, __, __, __, __, __, __, __, __, // 7
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 8
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 9
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // A
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // B
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // C
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // D
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
-    __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
-];
+static TABLE: [u8; 256] = {
+    const __: u8 = 0;
+    const LN: u8 = LINE;
+    const NL: u8 = SPACE;
+    [
+        //   1   2   3   4   5   6   7   8   9   A   B   C   D   E   F
+        __, __, __, __, __, __, __, __, __, NL, LN, __, __, LN, __, __, // 0
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 1
+        NL, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 2
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 3
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 4
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 5
+        __, __, __, __, __, E_, F_, __, __, __, __, __, __, __, __, O_, // 6
+        __, __, __, S_, __, __, V_, __, __, __, __, __, __, __, __, __, // 7
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 8
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // 9
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // A
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // B
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // C
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // D
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // E
+        __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, __, // F
+    ]
+};
+#[test]
+fn table() {
+    for b in u8::MIN..=u8::MAX {
+        match b {
+            b' ' | b'\t' => {
+                assert_eq!(TABLE[b as usize], SPACE, "{:?}({b:#X})", b as char);
+            }
+            b'\n' | b'\r' => {
+                assert_eq!(TABLE[b as usize], LINE, "{:?}({b:#X})", b as char);
+            }
+            b's' => {
+                assert_eq!(TABLE[b as usize], S_, "{:?}({b:#X})", b as char);
+            }
+            b'e' => {
+                assert_eq!(TABLE[b as usize], E_, "{:?}({b:#X})", b as char);
+            }
+            b'f' => {
+                assert_eq!(TABLE[b as usize], F_, "{:?}({b:#X})", b as char);
+            }
+            b'o' => {
+                assert_eq!(TABLE[b as usize], O_, "{:?}({b:#X})", b as char);
+            }
+            b'v' => {
+                assert_eq!(TABLE[b as usize], V_, "{:?}({b:#X})", b as char);
+            }
+            _ => assert_eq!(TABLE[b as usize], 0, "{:?}({b:#X})", b as char),
+        }
+    }
+}
 
 #[inline]
 fn skip_whitespace_until_byte(s: &mut &[u8], byte_mask: u8, whitespace_mask: u8) -> bool {
@@ -549,7 +580,7 @@ fn token(s: &mut &[u8], token: &'static [u8]) -> bool {
 #[inline(always)] // Ensure the code creating token_start_mask and check_start is inlined.
 fn skip_spaces_and_lines_until_token(s: &mut &[u8], token: &'static [u8]) -> bool {
     let token_start_mask = TABLE[token[0] as usize];
-    debug_assert_ne!(token_start_mask, __);
+    debug_assert_ne!(token_start_mask, 0);
     let check_start = match token.len() {
         4 | 8 | 12 | 16 => 0,
         _ => 1,
@@ -563,7 +594,7 @@ fn skip_spaces_and_lines_until_token(s: &mut &[u8], token: &'static [u8]) -> boo
             }
             break;
         }
-        if b & WS != 0 {
+        if b & WHITESPACE != 0 {
             *s = s_next;
             continue;
         }
