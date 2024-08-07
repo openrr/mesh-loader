@@ -220,14 +220,14 @@ fn read_binary_triangles(header: &BinaryHeader<'_>) -> Mesh {
             }
             let a = 1.;
             let color = if header.reverse_color {
-                let r = (triangle.color & 0x1f) as f32 * INV_VAL;
-                let g = ((triangle.color & (0x1f << 5)) >> 5) as f32 * INV_VAL;
-                let b = ((triangle.color & (0x1f << 10)) >> 10) as f32 * INV_VAL;
+                let r = (triangle.color & 0x1F) as f32 * INV_VAL;
+                let g = ((triangle.color & (0x1F << 5)) >> 5) as f32 * INV_VAL;
+                let b = ((triangle.color & (0x1F << 10)) >> 10) as f32 * INV_VAL;
                 [r, g, b, a]
             } else {
-                let b = (triangle.color & 0x1f) as f32 * INV_VAL;
-                let g = ((triangle.color & (0x1f << 5)) >> 5) as f32 * INV_VAL;
-                let r = ((triangle.color & (0x1f << 10)) >> 10) as f32 * INV_VAL;
+                let b = (triangle.color & 0x1F) as f32 * INV_VAL;
+                let g = ((triangle.color & (0x1F << 5)) >> 5) as f32 * INV_VAL;
+                let r = ((triangle.color & (0x1F << 10)) >> 10) as f32 * INV_VAL;
                 [r, g, b, a]
             };
             mesh.colors[0][vertices_len as usize..vertices_len as usize + 3]
