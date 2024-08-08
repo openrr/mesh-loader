@@ -97,14 +97,14 @@ const fn byte2hex(byte: u8, table: &[u8; 16]) -> [u8; 2] {
 #[cfg(test)]
 #[inline]
 fn hex2byte16(bytes: &[u8], out: &mut u8) -> io::Result<()> {
-    static DECODE_TABLE: [u8; 65536] = {
-        let mut table = [u8::MAX; 65536];
+    static DECODE_TABLE: [u16; 65536] = {
+        let mut table = [u16::MAX; 65536];
         let mut i = 0;
         loop {
             let lower = u16::from_ne_bytes(byte2hex(i, ENCODE_LOWER_TABLE));
             let upper = u16::from_ne_bytes(byte2hex(i, ENCODE_UPPER_TABLE));
-            table[lower as usize] = i;
-            table[upper as usize] = i;
+            table[lower as usize] = i as u16;
+            table[upper as usize] = i as u16;
             if i == u8::MAX {
                 break;
             }
@@ -114,14 +114,17 @@ fn hex2byte16(bytes: &[u8], out: &mut u8) -> io::Result<()> {
     };
     let n = u16::from_ne_bytes(bytes.try_into().unwrap());
     let num = DECODE_TABLE[n as usize];
-    if num == u8::MAX {
+    if num == u16::MAX {
         bail!(
             "invalid hex character {}{}",
             bytes[0] as char,
             bytes[1] as char
         );
     }
-    *out = num;
+    #[allow(clippy::cast_possible_truncation)]
+    {
+        *out = num as u8;
+    }
     Ok(())
 }
 
@@ -159,6 +162,15 @@ mod tests {
         Ok(out)
     }
 
+    #[test]
+    fn decode_max() {
+        let x = &[!0];
+        let hex_lower = encode_naive(x, ENCODE_LOWER_TABLE);
+        assert_eq!(decode(&hex_lower).unwrap(), x);
+        assert_eq!(decode16(&hex_lower).unwrap(), x);
+        assert_eq!(decode_naive(&hex_lower, hex2byte).unwrap(), x);
+        assert_eq!(decode_naive(&hex_lower, hex2byte16).unwrap(), x);
+    }
     ::quickcheck::quickcheck! {
         fn decode_valid(x: String) -> bool {
             if x.is_empty() {
