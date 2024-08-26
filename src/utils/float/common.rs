@@ -40,6 +40,7 @@ impl ByteSlice for [u8] {
 
         // FIXME: Can't use s.split_first() here yet,
         // see https://github.com/rust-lang/rust/issues/109328
+        // (fixed in LLVM 17)
         while let [c, s_next @ ..] = s {
             let c = c.wrapping_sub(b'0');
             if c < 10 {
