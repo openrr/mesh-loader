@@ -16,12 +16,10 @@
     clippy::impl_trait_in_params,
 )]
 #![allow(
-    clippy::cast_lossless,
     clippy::inline_always,
     clippy::match_same_arms, // https://github.com/rust-lang/rust-clippy/issues/12044
     clippy::missing_panics_doc,
     clippy::must_use_candidate,
-    clippy::unreadable_literal,
 )]
 
 #[cfg(any(feature = "collada", feature = "obj", feature = "stl"))]
