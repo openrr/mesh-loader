@@ -151,6 +151,7 @@ fn parse_partial_number(
     let start = s;
     // FIXME: Can't use s.split_first() here yet,
     // see https://github.com/rust-lang/rust/issues/109328
+    // (fixed in LLVM 17)
     while let [b'0', s_next @ ..] = s {
         s = s_next;
     }

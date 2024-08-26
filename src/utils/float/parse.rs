@@ -51,6 +51,7 @@ fn try_parse_19digits(s: &mut &[u8], x: &mut u64) {
     while *x < MIN_19DIGIT_INT {
         // FIXME: Can't use s.split_first() here yet,
         // see https://github.com/rust-lang/rust/issues/109328
+        // (fixed in LLVM 17)
         if let [c, s_next @ ..] = s {
             let digit = c.wrapping_sub(b'0');
 
