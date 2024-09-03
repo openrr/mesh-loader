@@ -323,7 +323,7 @@ impl ops::MulAssign<Matrix4x4> for [f32; 4] {
 impl ops::MulAssign<Matrix4x4> for [f32; 3] {
     fn mul_assign(&mut self, m: Matrix4x4) {
         let mut result = [self[0], self[1], self[2], 1.];
-        result.mul_assign(m);
+        result *= m;
         *self = [result[0], result[1], result[2]];
     }
 }
