@@ -311,12 +311,20 @@ impl Default for Matrix4x4 {
         )
     }
 }
+impl ops::MulAssign<Matrix4x4> for [f32; 4] {
+    fn mul_assign(&mut self, m: Matrix4x4) {
+        let [x, y, z, w] = *self;
+        self[0] = m.a1 * x + m.a2 * y + m.a3 * z + m.a4 * w;
+        self[1] = m.b1 * x + m.b2 * y + m.b3 * z + m.b4 * w;
+        self[2] = m.c1 * x + m.c2 * y + m.c3 * z + m.c4 * w;
+        self[3] = m.d1 * x + m.d2 * y + m.d3 * z + m.d4 * w;
+    }
+}
 impl ops::MulAssign<Matrix4x4> for [f32; 3] {
     fn mul_assign(&mut self, m: Matrix4x4) {
-        let [x, y, z] = *self;
-        self[0] = m.a1 * x + m.a2 * y + m.a3 * z;
-        self[1] = m.b1 * x + m.b2 * y + m.b3 * z;
-        self[2] = m.c1 * x + m.c2 * y + m.c3 * z;
+        let mut result = [self[0], self[1], self[2], 1.];
+        result.mul_assign(m);
+        *self = [result[0], result[1], result[2]];
     }
 }
 impl ops::MulAssign for Matrix4x4 {
