@@ -147,7 +147,7 @@ jobs:
             echo "::set-output name=success::false"
           fi
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && github.repository_owner == 'openrr'
-      - uses: peter-evans/create-pull-request@v6
+      - uses: peter-evans/create-pull-request@v7
         with:
           title: Remove unused words from cspell dictionary
           body: |
