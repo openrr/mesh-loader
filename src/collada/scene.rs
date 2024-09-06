@@ -89,6 +89,7 @@ pub(super) enum Transform {
 impl Transform {
     // Based on https://github.com/assimp/assimp/blob/v5.3.1/code/AssetLib/Collada/ColladaParser.cpp#L2318
     fn calculate_transform(transforms: &[Self]) -> Matrix4x4 {
+        // Based on https://github.com/assimp/assimp/blob/v5.3.1/include/assimp/vector3.inl
         fn sub(mut a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
             a[0] -= b[0];
             a[1] -= b[1];
@@ -98,8 +99,8 @@ impl Transform {
         fn cross_product(a: [f32; 3], b: [f32; 3]) -> [f32; 3] {
             let mut r = [0.; 3];
             r[0] = a[1] * b[2] - a[2] * b[1];
-            r[0] = a[2] * b[0] - a[0] * b[2];
-            r[0] = a[0] * b[1] - a[1] * b[0];
+            r[1] = a[2] * b[0] - a[0] * b[2];
+            r[2] = a[0] * b[1] - a[1] * b[0];
             r
         }
         fn normalize(mut v: [f32; 3]) -> [f32; 3] {
@@ -108,10 +109,10 @@ impl Transform {
             if len == 0. {
                 return v;
             }
-            let inv_len = 1. / len;
-            v[0] /= inv_len;
-            v[1] /= inv_len;
-            v[2] /= inv_len;
+            let inv = 1. / len;
+            v[0] *= inv;
+            v[1] *= inv;
+            v[2] *= inv;
             v
         }
 
