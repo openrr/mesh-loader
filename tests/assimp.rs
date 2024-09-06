@@ -89,14 +89,12 @@ fn test() {
         }
 
         // assimp
-        match filename {
-            // assimp parse error: Cannot parse string \"  0.0 0.0 0.0 1.0  \" as a real number: does not start with digit or decimal point followed by digit.
-            "library_animation_clips.dae" => continue,
-            // assimp error: "Collada: File came out empty. Something is wrong here."
-            "cube_tristrips.dae" | "cube_UTF16LE.dae" if option_env!("CI").is_some() => continue,
-            // More faces loaded only in CI...
-            "ConcavePolygon.dae" if option_env!("CI").is_some() => continue,
-            _ => {}
+        if (cfg!(target_os = "linux") || option_env!("CI").is_some())
+            && matches!(filename, "cube_tristrips.dae" | "cube_UTF16LE.dae")
+        {
+            // TODO
+            panic::catch_unwind(|| load_assimp(&assimp_importer, path)).unwrap_err();
+            continue;
         }
         let (ai_scene, ai) = &load_assimp(&assimp_importer, path);
 
@@ -117,8 +115,11 @@ fn test() {
         }
         if matches!(
             filename,
-            "ConcavePolygon.dae" | "cameras.dae" | "lights.dae" | "teapot_instancenodes.DAE"
-        ) {
+            "cameras.dae" | "lights.dae" | "teapot_instancenodes.DAE"
+        ) || option_env!("CI").is_none()
+            && cfg!(target_os = "macos")
+            && matches!(filename, "ConcavePolygon.dae")
+        {
             // TODO
             assert_ne!(ml.faces.len(), ai.faces.len());
         } else {
@@ -130,12 +131,14 @@ fn test() {
                     | "anims_with_full_rotations_between_keys.DAE"
                     | "Cinema4D.dae"
                     | "COLLADA.dae"
+                    | "ConcavePolygon.dae"
                     | "cube_emptyTags.dae"
                     | "cube_UTF16LE.dae"
                     | "cube_UTF8BOM.dae"
                     | "cube_xmlspecialchars.dae"
                     | "duck.dae"
                     | "kwxport_test_vcolors.dae"
+                    | "library_animation_clips.dae"
                     | "regr01.dae"
                     | "sphere.dae"
                     | "teapots.DAE"
@@ -175,10 +178,11 @@ fn test() {
                 "AsXML.xml"
                     | "cameras.dae"
                     | "COLLADA.dae"
+                    | "cube_emptyTags.dae"
                     | "cube_UTF16LE.dae"
                     | "cube_UTF8BOM.dae"
-                    | "cube_emptyTags.dae"
                     | "cube_xmlspecialchars.dae"
+                    | "library_animation_clips.dae"
                     | "sphere.dae"
             ) {
                 // TODO
@@ -194,6 +198,7 @@ fn test() {
                         | "regr01.dae"
                         | "AsXML.xml"
                 ) {
+                    // TODO
                     panic::catch_unwind(|| {
                         assert_full_matches(&ml.normals, &ai.normals, f32::EPSILON * 1000.);
                     })
@@ -206,10 +211,15 @@ fn test() {
                 filename,
                 "Cinema4D.dae"
                     | "earthCylindrical.DAE"
+                    | "kwxport_test_vcolors.dae"
+                    | "library_animation_clips.dae"
                     | "regr01.dae"
                     | "sphere.dae"
-                    | "kwxport_test_vcolors.dae"
-            ) {
+            ) || option_env!("CI").is_none()
+                && cfg!(target_os = "macos")
+                && matches!(filename, "box_nested_animation.dae" | "cube_with_2UVs.DAE")
+            {
+                // TODO
                 panic::catch_unwind(|| {
                     assert_full_matches(&ml.texcoords[0], &ai.texcoords[0], f32::EPSILON * 1000.);
                 })
@@ -217,7 +227,10 @@ fn test() {
             } else {
                 assert_full_matches(&ml.texcoords[0], &ai.texcoords[0], f32::EPSILON);
             }
-            if matches!(filename, "cube_with_2UVs.DAE") {
+            if (cfg!(target_os = "linux") || option_env!("CI").is_some())
+                && matches!(filename, "cube_with_2UVs.DAE")
+            {
+                // TODO
                 panic::catch_unwind(|| {
                     assert_full_matches(&ml.texcoords[1], &ai.texcoords[1], f32::EPSILON * 1000.);
                 })
@@ -225,7 +238,11 @@ fn test() {
             } else {
                 assert_full_matches(&ml.texcoords[1], &ai.texcoords[1], f32::EPSILON);
             }
-            if matches!(filename, "kwxport_test_vcolors.dae") {
+            if matches!(
+                filename,
+                "kwxport_test_vcolors.dae" | "library_animation_clips.dae"
+            ) {
+                // TODO
                 panic::catch_unwind(|| {
                     assert_full_matches(&ml.colors[0], &ai.colors[0], f32::EPSILON * 1000.);
                 })
@@ -256,7 +273,7 @@ fn test() {
             }
             // TODO: assimp accepts number format that mesh-loader doesn't accept.
             if matches!(filename, "number_formats.obj")
-                || matches!(filename, "point_cloud.obj") && option_env!("CI").is_some()
+                || cfg!(target_os = "linux") && matches!(filename, "point_cloud.obj")
             {
                 let _s = assimp_importer.read_file(path.to_str().unwrap()).unwrap();
             } else {
@@ -295,20 +312,6 @@ fn test() {
         }
 
         // assimp
-        match filename {
-            // Less or more faces loaded only in CI...
-            "box_without_lineending.obj"
-            | "concave_polygon.obj"
-            | "cube_with_vertexcolors_uni.obj"
-            | "cube_with_vertexcolors.obj"
-            | "regr_3429812.obj"
-            | "space_in_material_name.obj"
-                if option_env!("CI").is_some() =>
-            {
-                continue
-            }
-            _ => {}
-        }
         let (ai_scene, ai) = &load_assimp(&assimp_importer, path);
 
         if matches!(
@@ -326,13 +329,21 @@ fn test() {
         } else {
             assert_eq!(ml_scene.meshes.len(), ai_scene.meshes.len());
         }
-        if matches!(
-            filename,
-            "box_UTF16BE.obj"
-                | "box_longline.obj"
-                | "concave_polygon.obj"
-                | "space_in_material_name.obj"
-        ) {
+        if matches!(filename, "box_UTF16BE.obj" | "box_longline.obj")
+            || cfg!(target_os = "linux")
+                && matches!(
+                    filename,
+                    "box_without_lineending.obj"
+                        | "cube_with_vertexcolors.obj"
+                        | "cube_with_vertexcolors_uni.obj"
+                        | "regr_3429812.obj"
+                )
+            || cfg!(target_os = "macos")
+                && matches!(
+                    filename,
+                    "concave_polygon.obj" | "space_in_material_name.obj"
+                )
+        {
             // TODO
             assert_ne!(ml.faces.len(), ai.faces.len());
         } else {
@@ -342,6 +353,8 @@ fn test() {
                 "box_mat_with_spaces.obj"
                     | "box_without_lineending.obj"
                     | "box.obj"
+                    | "concave_polygon.obj"
+                    | "space_in_material_name.obj"
                     | "malformed2.obj"
                     | "regr_3429812.obj"
                     | "cube_usemtl.obj"
@@ -349,16 +362,32 @@ fn test() {
                     | "regr01.obj"
                     | "spider.obj"
             ) {
+                // TODO
                 panic::catch_unwind(|| assert_faces(ml, ai)).unwrap_err();
             } else {
                 assert_faces(ml, ai);
             }
-            if matches!(filename, "cube_usemtl.obj" | "regr01.obj" | "spider.obj") {
+            if matches!(
+                filename,
+                "cube_usemtl.obj"
+                    | "regr01.obj"
+                    | "spider.obj"
+                    | "concave_polygon.obj"
+                    | "space_in_material_name.obj"
+            ) {
+                // TODO
                 panic::catch_unwind(|| assert_vertices(ml, ai, f32::EPSILON * 1000.)).unwrap_err();
             } else {
                 assert_vertices(ml, ai, f32::EPSILON * 10.);
             }
-            if matches!(filename, "cube_usemtl.obj" | "spider.obj") {
+            if matches!(
+                filename,
+                "cube_usemtl.obj"
+                    | "spider.obj"
+                    | "concave_polygon.obj"
+                    | "space_in_material_name.obj"
+            ) {
+                // TODO
                 panic::catch_unwind(|| {
                     assert_full_matches(&ml.normals, &ai.normals, f32::EPSILON * 1000.);
                 })
@@ -369,6 +398,7 @@ fn test() {
             assert_full_matches(&ml.texcoords[0], &ai.texcoords[0], f32::EPSILON);
             assert_full_matches(&ml.texcoords[1], &ai.texcoords[1], f32::EPSILON);
             if matches!(filename, "only_a_part_of_vertexcolors.obj") {
+                // TODO
                 panic::catch_unwind(|| {
                     assert_full_matches(&ml.colors[0], &ai.colors[0], f32::EPSILON * 1000.);
                 })
@@ -407,10 +437,10 @@ fn test() {
         }
 
         // assimp
-        match filename {
-            // assimp error: "STL: ASCII file is empty or invalid; no data loaded"
-            "triangle_with_empty_solid.stl" if option_env!("CI").is_some() => continue,
-            _ => {}
+        if cfg!(target_os = "linux") && matches!(filename, "triangle_with_empty_solid.stl") {
+            // TODO
+            panic::catch_unwind(|| load_assimp(&assimp_importer, path)).unwrap_err();
+            continue;
         }
         let (ai_scene, ai) = &load_assimp(&assimp_importer, path);
 
