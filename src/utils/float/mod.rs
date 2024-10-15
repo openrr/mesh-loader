@@ -2,12 +2,12 @@
 //
 // Adapted from core::num::dec2flt with partial parsing support added, and very tricky and unsafe x87 FPU-related hack removed.
 //
-// Source: https://github.com/rust-lang/rust/tree/1.75.0/library/core/src/num/dec2flt
+// Source: https://github.com/rust-lang/rust/tree/1.80.0/library/core/src/num/dec2flt
 //
 // Copyright & License of the original code:
-// - https://github.com/rust-lang/rust/blob/1.75.0/COPYRIGHT
-// - https://github.com/rust-lang/rust/blob/1.75.0/LICENSE-APACHE
-// - https://github.com/rust-lang/rust/blob/1.75.0/LICENSE-MIT
+// - https://github.com/rust-lang/rust/blob/1.80.0/COPYRIGHT
+// - https://github.com/rust-lang/rust/blob/1.80.0/LICENSE-APACHE
+// - https://github.com/rust-lang/rust/blob/1.80.0/LICENSE-MIT
 //
 // # References
 //
