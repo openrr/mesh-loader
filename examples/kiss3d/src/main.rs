@@ -7,10 +7,11 @@ use std::{
     rc::Rc,
 };
 
-use anyhow::Result;
 use kiss3d::{light::Light, nalgebra as na, scene::SceneNode, window::Window};
 use lexopt::prelude::*;
 use na::{Translation3, UnitQuaternion, Vector3};
+
+type Result<T, E = Box<dyn std::error::Error>> = std::result::Result<T, E>;
 
 const DEFAULT_SCALE: f32 = 1.;
 

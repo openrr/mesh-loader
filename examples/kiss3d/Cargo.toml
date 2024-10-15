@@ -5,7 +5,6 @@ edition = "2021"
 [dependencies]
 mesh-loader = { path = "../.." }
 
-anyhow = "1"
 assimp = "0.3"
 kiss3d = { git = "https://github.com/sebcrozet/kiss3d.git", rev = "da70cd0", features = ["vertex_index_u32"] }
 lexopt = "0.3"
