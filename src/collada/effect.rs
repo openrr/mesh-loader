@@ -221,8 +221,8 @@ fn parse_profile_common<'a>(
     node: xml::Node<'a, '_>,
 ) -> io::Result<ProfileCommon<'a>> {
     debug_assert_eq!(node.tag_name().name(), "profile_COMMON");
-    let mut surfaces = HashMap::new();
-    let mut samplers = HashMap::new();
+    let mut surfaces = HashMap::default();
+    let mut samplers = HashMap::default();
     let mut technique = None;
 
     for child in node.element_children() {
