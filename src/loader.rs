@@ -251,11 +251,12 @@ fn detect_file_type(path: &Path, bytes: &[u8]) -> FileType {
     while let Some((&c, s_next)) = s.split_first() {
         match c {
             b's' => {
-                if starts_with(s, b"solid") {
+                if starts_with(s_next, &b"solid"[1..]) {
                     return FileType::Stl;
                 }
             }
             b'<' => {
+                // Compare whole s instead of s_next since needle.len() == 8
                 if starts_with(s, b"<COLLADA") {
                     return FileType::Collada;
                 }
