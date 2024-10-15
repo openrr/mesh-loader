@@ -39,5 +39,5 @@ fn main() {
 }
 
 fn run(bytes: &[u8]) {
-    let _result = read_mtl(bytes, None, &mut vec![], &mut HashMap::new());
+    let _result = read_mtl(bytes, None, &mut vec![], &mut HashMap::default());
 }

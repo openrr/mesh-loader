@@ -82,7 +82,7 @@ fn read_obj(
     let mut current_group: &[u8] = b"default";
     let mut current_material: &[u8] = &[];
     let mut materials = vec![];
-    let mut material_map = HashMap::new();
+    let mut material_map = HashMap::default();
 
     while let Some((&c, s_next)) = s.split_first() {
         match c {

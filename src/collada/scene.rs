@@ -849,7 +849,7 @@ fn parse_instance_material<'a>(node: xml::Node<'a, '_>) -> io::Result<SemanticMa
     debug_assert_eq!(node.tag_name().name(), "instance_material");
     let target = node.parse_url("target")?;
     let symbol = node.required_attribute("symbol")?;
-    // let mut map = HashMap::new();
+    // let mut map = HashMap::default();
 
     for child in node.element_children() {
         match child.tag_name().name() {
