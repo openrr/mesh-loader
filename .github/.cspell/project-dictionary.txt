@@ -16,7 +16,6 @@ emin
 endfacet
 endloop
 endsolid
-euxo
 FCOLLADA
 GLES
 GLSL
@@ -49,7 +48,6 @@ regr
 repr
 rustdocflags
 rustflags
-rustup
 SIDREF
 significand
 specularity
@@ -59,8 +57,6 @@ testline
 testmixed
 testpoints
 texbinormal
-texcoord
-texcoords
 textangent
 trifans
 tristrips
@@ -69,5 +65,4 @@ vcolors
 vcount
 vertexcolors
 wasi
-wireframe
 xmlspecialchars
