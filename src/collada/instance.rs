@@ -217,16 +217,21 @@ fn build_material(
         }
 
         let effect = match doc.get(&instance_material.target) {
-            Some(material) => match doc.get(&material.instance_effect.url) {
-                Some(effect) => effect,
-                None => {
-                    // debug!(
-                    //     "not found effect instance '{}'",
-                    //     material.instance_effect.url.as_str()
-                    // );
-                    continue;
+            Some(material) => {
+                if let Some(name) = material.name {
+                    mat.name = name.to_owned();
                 }
-            },
+                match doc.get(&material.instance_effect.url) {
+                    Some(effect) => effect,
+                    None => {
+                        // debug!(
+                        //     "not found effect instance '{}'",
+                        //     material.instance_effect.url.as_str()
+                        // );
+                        continue;
+                    }
+                }
+            }
             None => {
                 // debug!(
                 //     "not found material instance '{}'",
