@@ -103,7 +103,6 @@ pub(super) struct Primitive<'a> {
     /// The number of primitives.
     pub(super) count: u32,
     /// A symbol for a material.
-    #[allow(dead_code)] // TODO
     pub(super) material: Option<&'a str>,
 
     /// Declares the input semantics of a data source and connects a consumer to that source.
