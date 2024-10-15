@@ -22,8 +22,8 @@ pub(super) struct LibraryMaterials<'a> {
 pub(super) struct Material<'a> {
     /// The unique identifier of this element.
     pub(super) id: &'a str,
-    // /// The name of this element.
-    // pub(super) name: Option<&'a str>,
+    /// The name of this element.
+    pub(super) name: Option<&'a str>,
     pub(super) instance_effect: InstanceEffect<'a>,
 }
 
@@ -92,7 +92,7 @@ fn parse_material<'a>(node: xml::Node<'a, '_>) -> io::Result<Material<'a>> {
 
     Ok(Material {
         id,
-        // name: node.attribute("name"),
+        name: node.attribute("name"),
         instance_effect,
     })
 }
