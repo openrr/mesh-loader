@@ -12,3 +12,21 @@ This currently supports the following three formats commonly used in robotics:
 - [STL](https://en.wikipedia.org/wiki/STL_(file_format)) (.stl)
 - [COLLADA](https://en.wikipedia.org/wiki/COLLADA) (.dae)
 - [Wavefront OBJ](https://en.wikipedia.org/wiki/Wavefront_.obj_file) (.obj)
+
+# Usage
+[`Scene`] is filled with mesh data : name, vertices, normals, colors, texcoords and faces. But also its materials : opacity, shininess, index of refraction, texture, colors, ...
+
+[`Loader`] implements `load` and `load_from_slice` which will guess the file media type. But also, `load_{stl/collada/obj}` and `load_{stl/collada/obj}_from_slice` for individual formats.
+
+### Example
+```
+let path = std::path::Path::new("/your/path/to/file/file.{file_format}");
+let loader = mesh_loader::Loader::default();
+let scene = loader.load(path);
+
+if let Ok(scene) = scene {
+    for mesh in &scene.meshes {
+        assert_eq!(mesh.name, "Your mesh name");
+    }
+}
+```
