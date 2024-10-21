@@ -26,7 +26,7 @@ let scene = loader.load(path);
 
 if let Ok(scene) = scene {
     for mesh in &scene.meshes {
-        assert_eq!(mesh.name, "You mesh name");
+        assert_eq!(mesh.name, "Your mesh name");
     }
 }
 ```
