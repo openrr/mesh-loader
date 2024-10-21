@@ -16,43 +16,17 @@ This currently supports the following three formats commonly used in robotics:
 # Usage
 [`Scene`] is filled with mesh data : name, vertices, normals, colors, texcoords and faces. But also its materials : opacity, shininess, index of refraction, texture, colors, ...
 
-[`Loader`] implements `load_{stl/collada/obj}` and `load_from_{stl/collada/stl}_slice`.
+[`Loader`] implements `load` and `load_from_slice` which will guess the file media type. But also, `load_{stl/collada/obj}` and `load_{stl/collada/obj}_from_slice` for individual formats.
 
-## Stl
+### Example
 ```
-let path = std::path::Path::new("/your/path/to/stl/my.stl");
+let path = std::path::Path::new("/your/path/to/file/file.{file_format}");
 let loader = mesh_loader::Loader::default();
-let scene = loader.load_stl(path);
+let scene = loader.load(path);
 
 if let Ok(scene) = scene {
     for mesh in &scene.meshes {
-        assert_eq!(mesh.name, "You stl mesh name");
-    }
-}
-```
-## Collada
-```
-let path = std::path::Path::new("/your/path/to/collada/my.dae");
-let loader = mesh_loader::Loader::default();
-let scene = loader.load_collada(path);
-
-if let Ok(scene) = scene {
-    for mesh in &scene.meshes {
-        assert_eq!(mesh.name, "You collada mesh name");
-    }
-}
-
-```
-
-## Wavefront OBJ
-```
-let path = std::path::Path::new("/your/path/to/obj/my.obj");
-let loader = mesh_loader::Loader::default();
-let scene = loader.load_obj(path);
-
-if let Ok(scene) = scene {
-    for mesh in &scene.meshes {
-        assert_eq!(mesh.name, "You obj mesh name");
+        assert_eq!(mesh.name, "You mesh name");
     }
 }
 ```
