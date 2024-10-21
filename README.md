@@ -14,7 +14,7 @@ This currently supports the following three formats commonly used in robotics:
 - [Wavefront OBJ](https://en.wikipedia.org/wiki/Wavefront_.obj_file) (.obj)
 
 # Usage
-[`Scece`] is filled with mesh data : name, vertices, normals, colors, texcoords and faces. But also its materials : opacity, shininess, index of refraction, texture, colors, ...
+[`Scene`] is filled with mesh data : name, vertices, normals, colors, texcoords and faces. But also its materials : opacity, shininess, index of refraction, texture, colors, ...
 
 [`Loader`] implements `load_{stl/collada/obj}` and `load_from_{stl/collada/stl}_slice`.
 
