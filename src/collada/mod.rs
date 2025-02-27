@@ -286,7 +286,7 @@ impl<'a> Document<'a> {
         let version: Version = node.required_attribute("version")?.parse()?;
         if version < Version::MIN {
             bail!("collada schema version {} is not supported", version);
-        };
+        }
         // debug!("collada schema version is {}", version);
 
         let mut cx = Context {
