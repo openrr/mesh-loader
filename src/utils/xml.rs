@@ -256,7 +256,7 @@ impl<'a, 'input> XmlNodeExt<'a, 'input> for Node<'a, 'input> {
     #[cold]
     fn text_location(&self) -> TextPos {
         let mut start = self.range().start;
-        start += memchr_naive(b'>', self.document().input_text()[start..].as_bytes())
+        start += memchr_naive(b'>', &self.document().input_text().as_bytes()[start..])
             .map_or(0, |p| p + 1);
         self.document().text_pos_at(start)
     }
