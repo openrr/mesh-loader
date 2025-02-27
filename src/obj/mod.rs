@@ -1332,7 +1332,6 @@ fn skip_any_until_line(s: &mut &[u8]) {
             continue;
         }
         *s = s_next;
-        continue;
     }
 }
 

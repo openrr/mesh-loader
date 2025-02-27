@@ -22,6 +22,7 @@
     clippy::cast_sign_loss,
     clippy::items_after_statements,
     clippy::module_inception,
+    clippy::needless_continue,
     clippy::redundant_else
 )]
 
