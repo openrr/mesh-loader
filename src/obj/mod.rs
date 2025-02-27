@@ -369,7 +369,7 @@ fn read_f(
             f = s;
             *s = &[];
         }
-    };
+    }
     while !f.is_empty() {
         let mut w;
         let f_next = match memchr_naive_table(SPACE, &TABLE, f) {
@@ -393,7 +393,7 @@ fn read_f(
                 i = w;
                 w = &[];
             }
-        };
+        }
         match int::parse::<i32>(i) {
             #[allow(
                 clippy::cast_possible_truncation,
@@ -418,7 +418,7 @@ fn read_f(
                 i = w;
                 w = &[];
             }
-        };
+        }
         if !i.is_empty() {
             match int::parse::<i32>(i) {
                 #[allow(
