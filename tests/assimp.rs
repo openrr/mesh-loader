@@ -36,7 +36,7 @@ fn test() {
         };
     }
     assert_eq!(collada_models.len(), 27);
-    assert_eq!(obj_models.len(), 26);
+    assert_eq!(obj_models.len(), 27);
     assert_eq!(stl_models.len(), 9);
 
     let mesh_loader = mesh_loader::Loader::default().stl_parse_color(true);
@@ -348,6 +348,7 @@ fn test() {
                     | "testmixed.obj"
                     | "regr01.obj"
                     | "spider.obj"
+                    | "mtl_different_folder.obj"
             ) {
                 panic::catch_unwind(|| assert_faces(ml, ai)).unwrap_err();
             } else {
