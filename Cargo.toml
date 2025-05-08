@@ -31,7 +31,7 @@ roxmltree = { version = "0.20", optional = true }
 
 [dev-dependencies]
 assimp = "0.3"
-duct = "0.13"
+duct = "1.0"
 fastrand = "2"
 fs-err = "3"
 memmap2 = "0.9"
