@@ -27,7 +27,7 @@ obj = []
 
 [dependencies]
 # Used in COLLADA parsing.
-roxmltree = { version = "0.20", optional = true }
+roxmltree = { version = "0.21", optional = true }
 
 [dev-dependencies]
 assimp = "0.3"
