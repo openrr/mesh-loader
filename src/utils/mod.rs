@@ -28,7 +28,7 @@ pub(crate) mod utf16 {
                 .map(Cow::Borrowed)
                 .map_err(error::invalid_data)
         } else if bytes.starts_with(UTF32BE_BOM) || bytes.starts_with(UTF32LE_BOM) {
-            return Err(error::invalid_data("utf-32 is not supported"));
+            Err(error::invalid_data("utf-32 is not supported"))
         } else if bytes.starts_with(UTF16BE_BOM) {
             from_utf16be(&bytes[UTF16BE_BOM.len()..]).map(Into::into)
         } else if bytes.starts_with(UTF16LE_BOM) {
@@ -49,7 +49,7 @@ pub(crate) mod utf16 {
         if bytes.starts_with(UTF8_BOM) {
             Ok(Cow::Borrowed(&bytes[UTF8_BOM.len()..]))
         } else if bytes.starts_with(UTF32BE_BOM) || bytes.starts_with(UTF32LE_BOM) {
-            return Err(error::invalid_data("utf-32 is not supported"));
+            Err(error::invalid_data("utf-32 is not supported"))
         } else if bytes.starts_with(UTF16BE_BOM) {
             from_utf16be(&bytes[UTF16BE_BOM.len()..])
                 .map(String::into_bytes)
