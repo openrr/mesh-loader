@@ -14,11 +14,12 @@ pub(crate) mod utf16 {
 
     use crate::error;
 
-    const UTF32BE_BOM: &[u8] = &[0xFF, 0xFE, 00, 00];
-    const UTF32LE_BOM: &[u8] = &[00, 00, 0xFE, 0xFF];
+    // Refs: https://en.wikipedia.org/wiki/Byte_order_mark
+    const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
     const UTF16BE_BOM: &[u8] = &[0xFE, 0xFF];
     const UTF16LE_BOM: &[u8] = &[0xFF, 0xFE];
-    const UTF8_BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
+    const UTF32BE_BOM: &[u8] = &[0x00, 0x00, 0xFE, 0xFF];
+    const UTF32LE_BOM: &[u8] = &[0xFF, 0xFE, 0x00, 0x00];
 
     /// Converts bytes to a string. Converts to UTF-8 if bytes are UTF-16 and have BOM.
     #[cfg(feature = "collada")]
