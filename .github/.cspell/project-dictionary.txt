@@ -30,11 +30,9 @@ Lemire
 lightmap
 linestrips
 lookat
-memchr
 memrchr
 mmap
 mtllib
-nalgebra
 newmtl
 newparam
 NMTOKEN
