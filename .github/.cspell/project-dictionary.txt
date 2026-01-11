@@ -42,7 +42,6 @@ phong
 polylist
 powerset
 regr
-repr
 rustdocflags
 rustflags
 SIDREF
